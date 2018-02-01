@@ -1,25 +1,21 @@
 package edu.ucr.cs242.Crawler;
 
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
+import org.apache.commons.cli.*;
 
-import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.*;
-import java.util.concurrent.BlockingQueue;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.stream.Collectors;
 
 public class Crawler {
     private final int numOfThreads;
     private final int numOfPages;
+    private final int crawlDepth;
     private final int crawlInterval;
     private final String entryUrl;
     private final String crawlHostRegex;
@@ -32,17 +28,19 @@ public class Crawler {
      * Construct a Crawler with given settings.
      * @param numOfThreads The number of threads for crawling.
      * @param numOfPages The number of web pages to crawl.
+     * @param crawlDepth The depth of web pages to crawl.
      * @param crawlInterval The interval of crawling next page, limiting the access rate (milliseconds).
      * @param entryUrl The url of the entry page.
      * @param crawlHostRegex The url to be crawled should be within this host.
      * @param crawlPathRegex The path of the url should start with this prefix.
      * @param jdbcUrl The JDBC url to access database.
      */
-    public Crawler(int numOfThreads, int numOfPages, int crawlInterval,
+    public Crawler(int numOfThreads, int numOfPages, int crawlDepth, int crawlInterval,
                    String entryUrl, String crawlHostRegex, String crawlPathRegex,
                    String jdbcUrl) {
         this.numOfThreads = numOfThreads;
         this.numOfPages = numOfPages;
+        this.crawlDepth = crawlDepth;
         this.crawlInterval = crawlInterval;
         this.entryUrl = entryUrl;
         this.crawlHostRegex = crawlHostRegex;
@@ -50,168 +48,177 @@ public class Crawler {
         this.jdbcUrl = jdbcUrl;
     }
 
-    public void start() throws InterruptedException, SQLException {
+    /**
+     * Start the crawler.
+     * @throws InterruptedException
+     */
+    public void start() throws InterruptedException {
         Thread[] threads = new Thread[numOfThreads];
 
         for (int i = 0; i < numOfThreads; i++) {
-            threads[i] = new CrawlThread(i, numOfPages / numOfThreads);
-            threads[i].start();
+            try {
+                threads[i] = new CrawlThread(i, visitedUrls, numOfPages / numOfThreads,
+                        crawlDepth, crawlInterval, entryUrl, crawlHostRegex, crawlPathRegex, jdbcUrl);
+                threads[i].start();
 
-            System.out.println("Thread " + i + " started.");
+                System.out.println("Thread " + i + " started.");
+            } catch (SQLException e) {
+                threads[i] = null;
+                e.printStackTrace();
+            }
         }
 
         for (int i = 0; i < numOfThreads; i++) {
-            threads[i].join();
-        }
-    }
-
-    /**
-     * The actual thread for crawling, also a producer class.
-     */
-    protected class CrawlThread extends Thread {
-        private final int threadId;
-        private final int numberOfPages;
-
-        private Queue<String> nextUrlQueue = new LinkedList<>();
-
-        private BlockingQueue<WebPage> pageQueue = new LinkedBlockingQueue<>();
-        private WriterThread writer;
-
-        protected CrawlThread(int threadId, int numberOfPages) throws SQLException {
-            this.threadId = threadId;
-            this.numberOfPages = numberOfPages;
-            this.writer = new WriterThread(threadId, jdbcUrl, pageQueue);
-        }
-
-        @Override
-        public void run() {
-            int crawlCount = 0;
-
-            writer.start();
-            nextUrlQueue.add(entryUrl);
-
-            try {
-                while (crawlCount < numberOfPages) {
-                    String nextUrl = nextUrlQueue.remove();
-
-                    if (!visitedUrls.contains(nextUrl)) {
-                        try {
-                            Document doc = Jsoup.connect(nextUrl).get();
-
-                            // Since Special:Random returns 302, the actual url should be parsed after redirect.
-                            URL actualUrl = new URL(doc.location());
-                            visitedUrls.add(doc.location());
-
-                            Element elTitle = doc.getElementById("firstHeading"); // key
-                            Element elContent = doc.select("#mw-content-text .mw-parser-output").first(); // value 1
-                            Element elCategory = doc.getElementById("mw-normal-catlinks"); // value 2
-
-                            // Category could be null
-                            if (elTitle != null && elContent != null) {
-                                String title = elTitle.text().trim();
-                                String content = elContent.text().trim();
-
-                                // We want the text in `#mw-normal-catlinks ul > li`
-                                List<String> categories = elCategory == null
-                                        ? new ArrayList<>()
-                                        : elCategory.select("ul > li").stream()
-                                        .map(Element::text)
-                                        .map(String::trim)
-                                        .collect(Collectors.toList());
-
-                                // Put into writing queue
-                                pageQueue.put(new WebPage(title, content, categories));
-                                ++crawlCount;
-
-                                // Push all valid `#mw-content-text > a` into the stack.
-                                elContent.select("a").stream()
-                                        // We want <a> with attribute of href.
-                                        .filter(a -> a.hasAttr("href"))
-                                        .map(a -> a.attr("href"))
-                                        // Map href into URL object
-                                        .map(href -> {
-                                            try {
-                                                // Absolute link?
-                                                return href.contains("://")
-                                                        ? new URL(href)
-                                                        : new URL(actualUrl.getProtocol(), actualUrl.getHost(), actualUrl.getPort(), href);
-                                            } catch (MalformedURLException e) {
-                                                return null;
-                                            }
-                                        }).filter(Objects::nonNull)
-                                        // We only want the link inside a given host and the path meets some requirement.
-                                        .filter(url -> url.getHost().matches(crawlHostRegex) && url.getPath().matches(crawlPathRegex))
-                                        // Reconstruct the URL, remove the anchor part.
-                                        // There may be some duplicate URLs after this processing.
-                                        .map(url -> url.getProtocol() + "://" + url.getHost() + url.getFile())
-                                        .distinct()
-                                        // Check if the URL has already stored in the stack.
-                                        .filter(url -> !visitedUrls.contains(url))
-                                        .forEachOrdered(url -> nextUrlQueue.add(url));
-                            }
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-
-                        Thread.sleep(crawlInterval);
-                    }
-                }
-
-                writer.interrupt();
-                writer.join();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+            if (threads[i] != null) {
+                threads[i].join();
             }
         }
     }
 
-    protected void initializeDatabase() throws SQLException {
-        Connection dbConnection = DriverManager.getConnection(jdbcUrl);
+    /**
+     * Initialize database, creating necessary tables.
+     * @param jdbcUrl The JDBC connection string.
+     * @return Whether the table creation succeeded.
+     */
+    private static boolean initializeDatabase(String jdbcUrl) {
+        final String SQL_CREATE =
+                "CREATE TABLE IF NOT EXISTS pages (" +
+                "title TEXT PRIMARY KEY, " +
+                "content TEXT NOT NULL, " +
+                "categories TEXT)";
 
-        Statement query = dbConnection.createStatement();
-        query.execute("CREATE TABLE IF NOT EXISTS pages (title TEXT PRIMARY KEY, content TEXT NOT NULL, categories TEXT)");
-
-        dbConnection.close();
+        try (Connection dbConnection = DriverManager.getConnection(jdbcUrl);
+             Statement query = dbConnection.createStatement()) {
+            query.execute(SQL_CREATE);
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
-    public static void main(String[] args) throws InterruptedException, SQLException {
-        /*
-        Options options = new Options();
+    private static void printUsage() {
+        System.out.println("usage: crawler [options] <jdbc-url>");
+        System.out.println("use -h for a list of possible options");
+        System.exit(1);
+    }
 
-        options.addOption(Option.builder("n")
-                        .longOpt("thread")
+    private static void printMessage(String message) {
+        System.out.println("crawler: " + message);
+    }
+
+    private static void printHelp(Options options) {
+        HelpFormatter formatter = new HelpFormatter();
+        formatter.printHelp("crawler [options] <jdbc-url>", options);
+        System.out.println();
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        // Default values
+        final int NUMBER_OF_THREADS = 10;
+        final int NUMBER_OF_PAGES = 200000;
+        final int CRAWL_DEPTH = 10;
+        final int CRAWL_INTERVAL = 500;
+        final String ENTRY_URL = "https//en.wikipedia.org/wiki/Special:Random";
+        final String CRAWL_HOST_REGEX = "^en.wikipedia.org$";
+        final String CRAWL_PATH_REGEX = "^/wiki/[^:]*$"; // Special pages (such as Help:Category) are not crawled
+
+        Options options = new Options();
+        options.addOption(Option.builder("t")
+                        .longOpt("threads")
                         .argName("NUM OF THREADS")
-                        .desc("the number of threads for crawling")
+                        .desc("the number of threads for crawling (default: " + NUMBER_OF_THREADS + ")")
+                        .numberOfArgs(1)
+                        .build());
+
+        options.addOption(Option.builder("c")
+                        .longOpt("pages")
+                        .argName("NUM OF PAGES")
+                        .desc("the number of web pages to crawl (default: " + NUMBER_OF_PAGES + ")")
                         .numberOfArgs(1)
                         .build());
 
         options.addOption(Option.builder("d")
                         .longOpt("depth")
                         .argName("DEPTH")
-                        .desc("The depth of web pages to crawl")
+                        .desc("the depth of web pages to crawl (default: " + CRAWL_DEPTH + ")")
                         .numberOfArgs(1)
                         .build());
 
         options.addOption(Option.builder("i")
                         .longOpt("interval")
                         .argName("INTERVAL")
-                        .desc("the interval of crawling next page, limiting the access rate (milliseconds)")
+                        .desc("the interval (milliseconds) of crawling next page, " +
+                                "limiting the access rate (default: " + CRAWL_INTERVAL + ")")
                         .numberOfArgs(1)
                         .build());
-        */
 
-        final int NUMBER_OF_THREADS = 10;
-        final int NUMBER_OF_PAGES = 200000;
-        final int CRAWL_INTERVAL = 500;
-        final String ENTRY_URL = "https://en.wikipedia.org/wiki/Special:Random";
-        final String CRAWL_HOST_REGEX = "^en.wikipedia.org$";
-        final String CRAWL_PATH_REGEX = "^/wiki/[^:]*$"; // Special pages (such as Help:Category) are not crawled
-        final String JDBC_URL = "jdbc:sqlite:test.db";
+        options.addOption(Option.builder("u")
+                        .longOpt("entry-url")
+                        .argName("ENTRY URL")
+                        .desc("the url of the entry page (default: " + ENTRY_URL + ")")
+                        .numberOfArgs(1)
+                        .build());
 
-        final Crawler crawler = new Crawler(NUMBER_OF_THREADS, NUMBER_OF_PAGES, CRAWL_INTERVAL,
-                ENTRY_URL, CRAWL_HOST_REGEX, CRAWL_PATH_REGEX, JDBC_URL);
+        options.addOption(Option.builder("H")
+                        .longOpt("host-regex")
+                        .argName("HOST REGEX")
+                        .desc("the url to be crawled should be within this host (default: " + CRAWL_HOST_REGEX + ")")
+                        .numberOfArgs(1)
+                        .build());
 
-        crawler.initializeDatabase();
-        crawler.start();
+        options.addOption(Option.builder("P")
+                        .longOpt("path-regex")
+                        .argName("PATH REGEX")
+                        .desc("the path of the url should start with this prefix (default: " + CRAWL_PATH_REGEX + ")")
+                        .numberOfArgs(1)
+                        .build());
+
+        options.addOption("h", "help", false, "print a synopsis of standard options");
+
+        try {
+            CommandLine cmd = new DefaultParser().parse(options, args);
+            List<String> argList = cmd.getArgList();
+
+            if (cmd.hasOption("h")) {
+                printHelp(options);
+                System.exit(0);
+            }
+
+            if (argList.isEmpty()) {
+                printMessage("no jdbc url");
+                printUsage();
+            }
+
+            String jdbcUrl = argList.get(0);
+            if (!initializeDatabase(jdbcUrl)) {
+                printMessage("invalid jdbc url");
+                printUsage();
+            }
+
+            try {
+                int numOfThreads = Integer.parseInt(cmd.getOptionValue("threads", String.valueOf(NUMBER_OF_THREADS)));
+                int numOfPages = Integer.parseInt(cmd.getOptionValue("pages", String.valueOf(NUMBER_OF_PAGES)));
+                int crawlDepth = Integer.parseInt(cmd.getOptionValue("depth", String.valueOf(CRAWL_DEPTH)));
+                int crawlInterval = Integer.parseInt(cmd.getOptionValue("interval", String.valueOf(CRAWL_INTERVAL)));
+
+                // Test if valid url
+                String entryUrl = new URL(cmd.getOptionValue("entry-url", ENTRY_URL)).toString();
+                String crawlHostRegex = cmd.getOptionValue("host-regex", CRAWL_HOST_REGEX);
+                String crawlPathRegex = cmd.getOptionValue("path-regex", CRAWL_PATH_REGEX);
+
+                new Crawler(numOfThreads, numOfPages, crawlDepth, crawlInterval,
+                        entryUrl, crawlHostRegex, crawlPathRegex, jdbcUrl).start();
+            } catch (NumberFormatException | MalformedURLException e) {
+                printMessage("invalid option(s)");
+                printHelp(options);
+                System.exit(1);
+            }
+        } catch (ParseException e) {
+            // Lower the first letter, which as default is an upper letter.
+            printMessage(e.getMessage().substring(0, 1).toLowerCase() + e.getMessage().substring(1));
+            printHelp(options);
+            System.exit(1);
+        }
     }
 }

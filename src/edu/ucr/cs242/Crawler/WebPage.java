@@ -1,6 +1,5 @@
 package edu.ucr.cs242.Crawler;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class WebPage {
@@ -20,6 +19,12 @@ public class WebPage {
         return categories;
     }
 
+    /**
+     * Represent a web page in Wikipedia.
+     * @param title The page title.
+     * @param content The page content.
+     * @param categories The categories the page belongs to.
+     */
     public WebPage(String title, String content, List<String> categories) {
         this.title = title;
         this.content = content;
