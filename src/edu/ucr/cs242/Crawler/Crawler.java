@@ -202,7 +202,7 @@ public class Crawler {
 
         final int NUMBER_OF_THREADS = 10;
         final int NUMBER_OF_PAGES = 200000;
-        final int CRAWL_INTERVAL = 2000;
+        final int CRAWL_INTERVAL = 500;
         final String ENTRY_URL = "https://en.wikipedia.org/wiki/Special:Random";
         final String CRAWL_HOST_REGEX = "^en.wikipedia.org$";
         final String CRAWL_PATH_REGEX = "^/wiki/[^:]*$"; // Special pages (such as Help:Category) are not crawled
