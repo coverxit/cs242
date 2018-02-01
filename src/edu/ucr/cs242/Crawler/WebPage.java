@@ -1,4 +1,4 @@
-package edu.ucr.cs242.Crawler;
+package edu.ucr.cs242.crawler;
 
 import java.util.List;
 

@@ -1,4 +1,4 @@
-package edu.ucr.cs242.Crawler;
+package edu.ucr.cs242.crawler;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -51,7 +51,7 @@ public class CrawlThread extends Thread {
     private WriterThread writer;
 
     /**
-     * Construct a Crawler thread with given settings.
+     * Construct a crawler thread with given settings.
      * @param threadId The associated thread id.
      * @param visitedUrls The set of visited urls; the underlying object should be thread-safe.
      * @param numOfPages The number of web pages to crawl.

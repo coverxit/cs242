@@ -1,4 +1,4 @@
-package edu.ucr.cs242.Crawler;
+package edu.ucr.cs242.crawler;
 
 import org.apache.commons.cli.*;
 
@@ -25,7 +25,7 @@ public class Crawler {
     private Set<String> visitedUrls = ConcurrentHashMap.newKeySet();
 
     /**
-     * Construct a Crawler with given settings.
+     * Construct a crawler with given settings.
      * @param numOfThreads The number of threads for crawling.
      * @param numOfPages The number of web pages to crawl.
      * @param crawlDepth The depth of web pages to crawl.
