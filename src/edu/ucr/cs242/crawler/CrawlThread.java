@@ -118,8 +118,8 @@ public class CrawlThread extends Thread {
                         // Map href into URL object
                         .map(href -> {
                             try {
-                                // Absolute link?
-                                return href.contains("://")
+                                // Absolute link or protocol relative link?
+                                return href.contains("://") || href.startsWith("//")
                                         ? new URL(href)
                                         : new URL(actualUrl.getProtocol(), actualUrl.getHost(), actualUrl.getPort(), href);
                             } catch (MalformedURLException e) {
