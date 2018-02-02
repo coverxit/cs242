@@ -158,7 +158,7 @@ public class CrawlThread extends Thread {
 
         try {
             while (crawlCount < numOfPages && !writer.isInterrupted()) {
-                QueueItem nextUrl = nextUrlQueue.remove();
+                QueueItem nextUrl = nextUrlQueue.isEmpty() ? new QueueItem(entryUrl, 0) : nextUrlQueue.remove();
 
                 if (!visitedUrls.contains(nextUrl.getUrl())) {
                     process(nextUrl);
