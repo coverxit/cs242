@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
 import java.util.stream.Collectors;
@@ -51,6 +52,7 @@ public class WriterThread extends Thread {
         int bufferedCount = 0;
         int committedCount = 0;
 
+        System.out.println("WriterThread " + threadId + " started at " + LocalDateTime.now().toLocalTime() + ".");
         try {
             PreparedStatement statement = dbConnection.prepareStatement(SQL_INSERT);
 
