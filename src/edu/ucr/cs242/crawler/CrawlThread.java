@@ -29,8 +29,8 @@ public class CrawlThread extends Thread {
     private final String crawlPathRegex;
 
     private class QueueItem {
-        private String url;
-        private int depth;
+        private final String url;
+        private final int depth;
 
         public String getUrl() {
             return url;
@@ -47,10 +47,10 @@ public class CrawlThread extends Thread {
     }
 
     private int crawlCount = 0;
-    private Queue<QueueItem> nextUrlQueue = new LinkedList<>();
+    private final Queue<QueueItem> nextUrlQueue = new LinkedList<>();
 
-    private BlockingQueue<WebPage> pageQueue = new LinkedBlockingQueue<>();
-    private WriterThread writer;
+    private final BlockingQueue<WebPage> pageQueue = new LinkedBlockingQueue<>();
+    private final WriterThread writer;
 
     /**
      * Construct a crawler thread with given settings.
