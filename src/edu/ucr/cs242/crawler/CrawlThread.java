@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -77,6 +79,10 @@ public class CrawlThread extends Thread {
         this.writer = new WriterThread(threadId, jdbcUrl, pageQueue);
     }
 
+    public void setWriterEventListener(OnWriterExitEventListener exitEventListener) {
+        writer.setExitEventListener(exitEventListener);
+    }
+
     private void process(QueueItem nextUrl) throws InterruptedException {
         try {
             Document doc = Jsoup.connect(nextUrl.getUrl()).get();
@@ -143,6 +149,10 @@ public class CrawlThread extends Thread {
 
     @Override
     public void run() {
+        LocalDateTime startAt = LocalDateTime.now();
+        System.out.println("CrawlThread " + threadId + " started at " + startAt.toLocalTime() + ". " +
+                "Pages to crawl: " + numOfPages + ".");
+
         writer.start();
         nextUrlQueue.add(new QueueItem(entryUrl, 0));
 
@@ -153,13 +163,24 @@ public class CrawlThread extends Thread {
                 if (!visitedUrls.contains(nextUrl.getUrl())) {
                     process(nextUrl);
 
-                    if (crawlCount % (numOfPages / 100) == 0) {
-                        System.out.format("Thread %d crawled %d pages, %.2f%% completed.\n",
-                                threadId, crawlCount, crawlCount / (numOfPages / 100.0f));
+                    if (crawlCount % (numOfPages < 50 ? numOfPages : 50) == 0) {
+                        LocalDateTime now = LocalDateTime.now();
+                        Duration elapsed = Duration.between(startAt, now);
+                        long hours = elapsed.toHours();
+                        long minutes = elapsed.toMinutes() % 60;
+                        long seconds = elapsed.getSeconds() % 60;
+
+                        System.out.format("CrawlThread %d crawled %d pages, %.2f%% completed. Elapsed time: %02d:%02d:%02d.\n",
+                                threadId, crawlCount, crawlCount * 100.0f / numOfPages, hours, minutes, seconds);
                     }
 
                     Thread.sleep(crawlInterval);
                 }
+            }
+
+            synchronized (pageQueue) {
+                while (!pageQueue.isEmpty())
+                    pageQueue.wait();
             }
 
             writer.interrupt();

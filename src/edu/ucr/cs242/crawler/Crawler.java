@@ -8,9 +8,12 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Crawler {
     private final int numOfThreads;
@@ -53,15 +56,19 @@ public class Crawler {
      * @throws InterruptedException
      */
     public void start() throws InterruptedException {
-        Thread[] threads = new Thread[numOfThreads];
+        LocalDateTime startAt = LocalDateTime.now();
+        CrawlThread[] threads = new CrawlThread[numOfThreads];
+        AtomicInteger committedCount = new AtomicInteger(0);
+
+        System.out.println("Crawler started at " + startAt.toLocalTime() + ". " +
+                "Pages to crawl: " + numOfPages + ".");
 
         for (int i = 0; i < numOfThreads; i++) {
             try {
                 threads[i] = new CrawlThread(i, visitedUrls, numOfPages / numOfThreads,
                         crawlDepth, crawlInterval, entryUrl, crawlHostRegex, crawlPathRegex, jdbcUrl);
+                threads[i].setWriterEventListener(committedCount::addAndGet);
                 threads[i].start();
-
-                System.out.println("Thread " + i + " started.");
             } catch (SQLException e) {
                 threads[i] = null;
                 e.printStackTrace();
@@ -73,6 +80,15 @@ public class Crawler {
                 threads[i].join();
             }
         }
+
+        LocalDateTime now = LocalDateTime.now();
+        Duration elapsed = Duration.between(startAt, now);
+        long hours = elapsed.toHours();
+        long minutes = elapsed.toMinutes() % 60;
+        long seconds = elapsed.getSeconds() % 60;
+
+        System.out.format("Summary: Crawler committed %d pages in total. ", committedCount.get());
+        System.out.format("Elapsed time: %02d:%02d:%02d.\n", hours, minutes, seconds);
     }
 
     /**
