@@ -89,58 +89,63 @@ public class CrawlThread extends Thread {
 
             // Since Special:Random returns 302, the actual url should be parsed after redirect.
             URL actualUrl = new URL(doc.location());
-            visitedUrls.add(doc.location());
 
-            Element elTitle = doc.getElementById("firstHeading"); // key
-            Element elContent = doc.select("#mw-content-text .mw-parser-output").first(); // value 1
-            Element elCategory = doc.getElementById("mw-normal-catlinks"); // value 2
+            // The redirected url may a special page, filter them out first.
+            if (actualUrl.getHost().matches(crawlHostRegex) && actualUrl.getPath().matches(crawlPathRegex)) {
+                // Remove the anchor part.
+                visitedUrls.add(actualUrl.getProtocol() + "://" + actualUrl.getHost() + actualUrl.getFile());
 
-            // Category could be null
-            if (elTitle != null && elContent != null) {
-                String title = elTitle.text().trim();
-                String content = elContent.text().trim();
+                Element elTitle = doc.getElementById("firstHeading"); // key
+                Element elContent = doc.select("#mw-content-text .mw-parser-output").first(); // value 1
+                Element elCategory = doc.getElementById("mw-normal-catlinks"); // value 2
 
-                // We want the text in `#mw-normal-catlinks ul > li`
-                List<String> categories = elCategory == null
-                        ? new ArrayList<>()
-                        : elCategory.select("ul > li").stream()
-                        .map(Element::text)
-                        .map(String::trim)
-                        .collect(Collectors.toList());
+                // Category could be null
+                if (elTitle != null && elContent != null) {
+                    String title = elTitle.text().trim();
+                    String content = elContent.text().trim();
 
-                // Put into writing queue
-                pageQueue.put(new WebPage(title, content, categories));
-                ++crawlCount;
+                    // We want the text in `#mw-normal-catlinks ul > li`
+                    List<String> categories = elCategory == null
+                            ? new ArrayList<>()
+                            : elCategory.select("ul > li").stream()
+                            .map(Element::text)
+                            .map(String::trim)
+                            .collect(Collectors.toList());
 
-                // Hit the depth limit?
-                if (nextUrl.getDepth() >= crawlDepth)
-                    return;
+                    // Put into writing queue
+                    pageQueue.put(new WebPage(title, content, categories));
+                    ++crawlCount;
 
-                // Push all valid `#mw-content-text > a` into the stack.
-                elContent.select("a").stream()
-                        // We want <a> with attribute of href.
-                        .filter(a -> a.hasAttr("href"))
-                        .map(a -> a.attr("href"))
-                        // Map href into URL object
-                        .map(href -> {
-                            try {
-                                // Absolute link or protocol relative link?
-                                return href.contains("://") || href.startsWith("//")
-                                        ? new URL(href)
-                                        : new URL(actualUrl.getProtocol(), actualUrl.getHost(), actualUrl.getPort(), href);
-                            } catch (MalformedURLException e) {
-                                return null;
-                            }
-                        }).filter(Objects::nonNull)
-                        // We only want the link inside a given host and the path meets some requirement.
-                        .filter(url -> url.getHost().matches(crawlHostRegex) && url.getPath().matches(crawlPathRegex))
-                        // Reconstruct the URL, remove the anchor part.
-                        // There may be some duplicate URLs after this processing.
-                        .map(url -> url.getProtocol() + "://" + url.getHost() + url.getFile())
-                        .distinct()
-                        // Check if the URL has already stored in the stack.
-                        .filter(url -> !visitedUrls.contains(url))
-                        .forEachOrdered(url -> nextUrlQueue.add(new QueueItem(url, nextUrl.getDepth() + 1)));
+                    // Hit the depth limit?
+                    if (nextUrl.getDepth() >= crawlDepth)
+                        return;
+
+                    // Push all valid `#mw-content-text > a` into the stack.
+                    elContent.select("a").stream()
+                            // We want <a> with attribute of href.
+                            .filter(a -> a.hasAttr("href"))
+                            .map(a -> a.attr("href"))
+                            // Map href into URL object
+                            .map(href -> {
+                                try {
+                                    // Absolute link or protocol relative link?
+                                    return href.contains("://") || href.startsWith("//")
+                                            ? new URL(href)
+                                            : new URL(actualUrl.getProtocol(), actualUrl.getHost(), actualUrl.getPort(), href);
+                                } catch (MalformedURLException e) {
+                                    return null;
+                                }
+                            }).filter(Objects::nonNull)
+                            // We only want the link inside a given host and the path meets some requirement.
+                            .filter(url -> url.getHost().matches(crawlHostRegex) && url.getPath().matches(crawlPathRegex))
+                            // Reconstruct the URL, remove the anchor part.
+                            // There may be some duplicate URLs after this processing.
+                            .map(url -> url.getProtocol() + "://" + url.getHost() + url.getFile())
+                            .distinct()
+                            // Check if the URL has already stored in the stack.
+                            .filter(url -> !visitedUrls.contains(url))
+                            .forEachOrdered(url -> nextUrlQueue.add(new QueueItem(url, nextUrl.getDepth() + 1)));
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
