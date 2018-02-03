@@ -2,6 +2,10 @@ package edu.ucr.cs242.crawler;
 
 import org.apache.commons.cli.*;
 
+import java.io.BufferedOutputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Connection;
@@ -29,14 +33,14 @@ public class Crawler {
 
     /**
      * Construct a crawler with given settings.
-     * @param numOfThreads The number of threads for crawling.
-     * @param numOfPages The number of web pages to crawl.
-     * @param crawlDepth The depth of web pages to crawl.
-     * @param crawlInterval The interval of crawling next page, limiting the access rate (milliseconds).
-     * @param entryUrl The url of the entry page.
+     * @param numOfThreads   The number of threads for crawling.
+     * @param numOfPages     The number of web pages to crawl.
+     * @param crawlDepth     The depth of web pages to crawl.
+     * @param crawlInterval  The interval of crawling next page, limiting the access rate (milliseconds).
+     * @param entryUrl       The url of the entry page.
      * @param crawlHostRegex The url to be crawled should be within this host.
      * @param crawlPathRegex The path of the url should start with this prefix.
-     * @param jdbcUrl The JDBC url to access database.
+     * @param jdbcUrl        The JDBC url to access database.
      */
     public Crawler(int numOfThreads, int numOfPages, int crawlDepth, int crawlInterval,
                    String entryUrl, String crawlHostRegex, String crawlPathRegex,
@@ -53,9 +57,8 @@ public class Crawler {
 
     /**
      * Start the crawler.
-     * @throws InterruptedException
      */
-    public void start() throws InterruptedException {
+    public void start() {
         LocalDateTime startAt = LocalDateTime.now();
         CrawlThread[] threads = new CrawlThread[numOfThreads];
         AtomicInteger committedCount = new AtomicInteger(0);
@@ -71,13 +74,16 @@ public class Crawler {
                 threads[i].start();
             } catch (SQLException e) {
                 threads[i] = null;
+                System.out.println("Failed to create thread " + i + ".");
                 e.printStackTrace();
             }
         }
 
         for (int i = 0; i < numOfThreads; i++) {
             if (threads[i] != null) {
-                threads[i].join();
+                // Wait threads to exit.
+                try { threads[i].join(); }
+                catch (InterruptedException e) { threads[i].interrupt(); }
             }
         }
 
@@ -129,10 +135,10 @@ public class Crawler {
         System.out.println();
     }
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
         // Default values
-        final int NUMBER_OF_THREADS = 10;
-        final int NUMBER_OF_PAGES = 200000;
+        final int NUMBER_OF_THREADS = 3;
+        final int NUMBER_OF_PAGES = 500000;
         final int CRAWL_DEPTH = 10;
         final int CRAWL_INTERVAL = 500;
         final String ENTRY_URL = "https://en.wikipedia.org/wiki/Special:Random";
@@ -190,6 +196,13 @@ public class Crawler {
                         .numberOfArgs(1)
                         .build());
 
+        options.addOption(Option.builder("l")
+                        .longOpt("log-output")
+                        .argName("FILE NAME")
+                        .desc("the file to write logs into (default: STDOUT)")
+                        .numberOfArgs(1)
+                        .build());
+
         options.addOption("h", "help", false, "print a synopsis of standard options");
 
         try {
@@ -210,6 +223,17 @@ public class Crawler {
             if (!initializeDatabase(jdbcUrl)) {
                 printMessage("invalid jdbc url");
                 printUsage();
+            }
+
+            String logOutput = cmd.getOptionValue("log-output");
+            if (logOutput != null) {
+                try {
+                    PrintStream ps = new PrintStream(new BufferedOutputStream(new FileOutputStream(logOutput)), true);
+                    System.setOut(ps);
+                } catch (FileNotFoundException e) {
+                    printMessage("invalid log file path");
+                    printUsage();
+                }
             }
 
             try {

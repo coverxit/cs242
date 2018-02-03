@@ -21,8 +21,8 @@ public class WebPage {
 
     /**
      * Represent a web page in Wikipedia.
-     * @param title The page title.
-     * @param content The page content.
+     * @param title      The page title.
+     * @param content    The page content.
      * @param categories The categories the page belongs to.
      */
     public WebPage(String title, String content, List<String> categories) {

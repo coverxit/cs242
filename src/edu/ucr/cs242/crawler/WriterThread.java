@@ -34,8 +34,8 @@ public class WriterThread extends Thread {
 
     /**
      * Construct a writer thread, with given settings.
-     * @param threadId The associated thread id.
-     * @param jdbcUrl The JDBC connection string.
+     * @param threadId  The associated thread id.
+     * @param jdbcUrl   The JDBC connection string.
      * @param pageQueue The producer-consumer queue.
      * @throws SQLException
      */
@@ -78,13 +78,16 @@ public class WriterThread extends Thread {
                 }
             }
 
+            // The final commit.
             int sum = Arrays.stream(statement.executeBatch()).sum();
             dbConnection.commit();
             committedCount += sum;
         } catch (Exception e) {
+            System.out.println("WriterThread " + threadId + " throws an exception.");
             e.printStackTrace();
-            Thread.currentThread().interrupt();
 
+            // Something wrong, we have to rollback the transaction.
+            Thread.currentThread().interrupt();
             try { dbConnection.rollback(); }
             catch (SQLException _e) { _e.printStackTrace(); }
         } finally {
@@ -93,8 +96,11 @@ public class WriterThread extends Thread {
 
             System.out.format("Summary: WriterThread %d committed %d pages in total.\n", threadId, committedCount);
 
-            synchronized (pageQueue) {
-                pageQueue.notify();
+            // Normal exit?
+            if (!Thread.currentThread().isInterrupted()) {
+                synchronized (pageQueue) {
+                    pageQueue.notify();
+                }
             }
 
             if (exitEventListener != null) {
