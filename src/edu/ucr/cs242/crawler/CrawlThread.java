@@ -80,7 +80,7 @@ public class CrawlThread extends Thread {
         this.writer = new WriterThread(threadId, jdbcUrl, pageQueue);
     }
 
-    public void setWriterEventListener(OnWriterExitEventListener exitEventListener) {
+    public void setWriterExitListener(OnWriterExitEventListener exitEventListener) {
         writer.setExitEventListener(exitEventListener);
     }
 

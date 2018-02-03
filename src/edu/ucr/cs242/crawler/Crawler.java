@@ -70,7 +70,7 @@ public class Crawler {
             try {
                 threads[i] = new CrawlThread(i, visitedUrls, numOfPages / numOfThreads,
                         crawlDepth, crawlInterval, entryUrl, crawlHostRegex, crawlPathRegex, jdbcUrl);
-                threads[i].setWriterEventListener(committedCount::addAndGet);
+                threads[i].setWriterExitListener(committedCount::addAndGet);
                 threads[i].start();
             } catch (SQLException e) {
                 threads[i] = null;
