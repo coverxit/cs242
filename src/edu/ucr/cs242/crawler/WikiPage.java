@@ -2,7 +2,7 @@ package edu.ucr.cs242.crawler;
 
 import java.util.List;
 
-public class WebPage {
+public class WikiPage {
     private String title;
     private String content;
     private List<String> categories;
@@ -25,7 +25,7 @@ public class WebPage {
      * @param content    The page content.
      * @param categories The categories the page belongs to.
      */
-    public WebPage(String title, String content, List<String> categories) {
+    public WikiPage(String title, String content, List<String> categories) {
         this.title = title;
         this.content = content;
         this.categories = categories;

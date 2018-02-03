@@ -49,7 +49,7 @@ public class CrawlThread extends Thread {
     private int crawlCount = 0;
     private final Queue<QueueItem> nextUrlQueue = new LinkedList<>();
 
-    private final BlockingQueue<WebPage> pageQueue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<WikiPage> pageQueue = new LinkedBlockingQueue<>();
     private final WriterThread writer;
 
     /**
@@ -123,7 +123,7 @@ public class CrawlThread extends Thread {
                         .collect(Collectors.toList());
 
                 // Put into writing queue
-                try { pageQueue.put(new WebPage(title, content, categories)); }
+                try { pageQueue.put(new WikiPage(title, content, categories)); }
                 // Oops! Something wrong...
                 catch (InterruptedException e) { return; }
 

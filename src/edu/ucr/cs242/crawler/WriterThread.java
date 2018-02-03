@@ -23,7 +23,7 @@ public class WriterThread extends Thread {
     public static final String SQL_INSERT = "INSERT OR IGNORE INTO pages (title, content, categories) VALUES (?, ?, ?)";
 
     private final int threadId;
-    private final BlockingQueue<WebPage> pageQueue;
+    private final BlockingQueue<WikiPage> pageQueue;
 
     private Connection dbConnection;
     private OnWriterExitEventListener exitEventListener;
@@ -39,7 +39,7 @@ public class WriterThread extends Thread {
      * @param pageQueue The producer-consumer queue.
      * @throws SQLException
      */
-    public WriterThread(int threadId, String jdbcUrl, BlockingQueue<WebPage> pageQueue) throws SQLException {
+    public WriterThread(int threadId, String jdbcUrl, BlockingQueue<WikiPage> pageQueue) throws SQLException {
         this.threadId = threadId;
         this.pageQueue = pageQueue;
 
@@ -58,7 +58,7 @@ public class WriterThread extends Thread {
 
             while (!Thread.currentThread().isInterrupted()) {
                 try {
-                    WebPage page = pageQueue.take();
+                    WikiPage page = pageQueue.take();
 
                     statement.setString(1, page.getTitle());
                     statement.setString(2, page.getContent());
