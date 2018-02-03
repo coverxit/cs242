@@ -3,6 +3,7 @@ package edu.ucr.cs242.crawler;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -13,6 +14,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 /**
@@ -106,15 +108,34 @@ public class CrawlThread extends Thread {
             visitedUrls.add(actualUrl.getProtocol() + "://" + actualUrl.getHost() + actualUrl.getFile());
 
             Element elTitle = doc.getElementById("firstHeading"); // key
-            Element elContent = doc.select("#mw-content-text .mw-parser-output").first(); // value 1
+            Element elContent = doc.selectFirst("#mw-content-text .mw-parser-output"); // value 1
             Element elCategory = doc.getElementById("mw-normal-catlinks"); // value 2
 
             // Category could be null
             if (elTitle != null && elContent != null) {
                 String title = elTitle.text().trim();
-                String content = elContent.text().trim();
 
-                // We want the text in `#mw-normal-catlinks ul > li`
+                // Remove all reference <sup>s.
+                elContent.select("sup[class='reference']").remove();
+                // Remove the `edit` links.
+                elContent.select("span[class='mw-editsection']").remove();
+                // Remove unused tags (table & div).
+                Arrays.asList("table", "div").forEach(tag -> elContent.select(tag).remove());
+                // Remove empty headings with no paragraphs below it.
+                Arrays.asList("h1", "h2", "h3", "h4", "h5", "h6").forEach(
+                        tag -> elContent.select(tag + "+" + tag).stream()
+                                .map(Element::previousElementSibling)
+                                .forEach(Element::remove));
+                // The final content can be now generated.
+                String content = elContent.children().stream()
+                        // We don't need empty elements (that is with no text).
+                        .filter(Element::hasText)
+                        // Map to its un-encoded text & trim
+                        .map(Element::wholeText).map(String::trim)
+                        // Collect back to a full string
+                        .collect(Collectors.joining("\n"));
+
+                // For categories, we want the text in `#mw-normal-catlinks ul > li`
                 List<String> categories = elCategory == null
                         ? new ArrayList<>()
                         : elCategory.select("ul > li").stream()
@@ -135,9 +156,8 @@ public class CrawlThread extends Thread {
                     return;
 
                 // Push all valid `#mw-content-text > a` into the stack.
-                elContent.select("a").stream()
-                        // We want <a> with attribute of href.
-                        .filter(a -> a.hasAttr("href"))
+                // We want <a> with attribute of href.
+                elContent.select("a[href]").stream()
                         .map(a -> a.attr("href"))
                         // Map href into URL object
                         .map(href -> {
