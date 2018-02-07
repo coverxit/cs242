@@ -162,7 +162,7 @@ public class CrawlThread extends Thread {
                         }).filter(Objects::nonNull)
                         // It is in a format of 18 January 2018, at 21:30.
                         .map(time -> LocalDateTime.parse(time,
-                                DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm", Locale.US)))
+                                DateTimeFormatter.ofPattern("d MMMM yyyy HH:mm", Locale.US)))
                         // If not found, use current date time as the last modification.
                         .findFirst().orElse(LocalDateTime.now());
 
