@@ -94,7 +94,7 @@ public class WikiCrawler {
         long seconds = elapsed.getSeconds() % 60;
 
         System.out.format("Summary: WikiCrawler committed %d pages in total. ", committedCount.get());
-        System.out.format("Elapsed time: %02d:%02d:%02d.\n", hours, minutes, seconds);
+        System.out.format("Elapsed time: %02d:%02d:%02d.%n", hours, minutes, seconds);
     }
 
     /**
@@ -217,13 +217,13 @@ public class WikiCrawler {
             }
 
             if (argList.isEmpty()) {
-                printMessage("no jdbc url");
+                printMessage("JDBC url is not specified");
                 printUsage();
             }
 
             String jdbcUrl = argList.get(0);
             if (!initializeDatabase(jdbcUrl)) {
-                printMessage("invalid jdbc url");
+                printMessage("invalid JDBC url");
                 printUsage();
             }
 

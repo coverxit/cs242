@@ -184,7 +184,7 @@ public class CrawlThread extends Thread {
         long minutes = elapsed.toMinutes() % 60;
         long seconds = elapsed.getSeconds() % 60;
 
-        System.out.format("%sCrawlThread %d crawled %d pages, %.2f%% completed. Elapsed time: %02d:%02d:%02d.\n",
+        System.out.format("%sCrawlThread %d crawled %d pages, %.2f%% completed. Elapsed time: %02d:%02d:%02d.%n",
                 summary ? "Summary: " : "", threadId, crawlCount, crawlCount * 100.0f / numOfPages, hours, minutes, seconds);
     }
 

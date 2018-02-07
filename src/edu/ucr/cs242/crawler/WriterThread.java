@@ -70,7 +70,7 @@ public class WriterThread extends Thread {
                         dbConnection.commit();
                         committedCount += sum;
 
-                        System.out.format("WriterThread %d committed %d pages. Most recent one: %s.\n",
+                        System.out.format("WriterThread %d committed %d pages. Most recent one: %s.%n",
                                 threadId, sum, page.getTitle());
                     }
                 } catch (InterruptedException e) {
@@ -94,7 +94,7 @@ public class WriterThread extends Thread {
             try { dbConnection.close(); }
             catch (SQLException _e) { _e.printStackTrace(); }
 
-            System.out.format("Summary: WriterThread %d committed %d pages in total.\n", threadId, committedCount);
+            System.out.format("Summary: WriterThread %d committed %d pages in total.%n", threadId, committedCount);
 
             // Normal exit?
             if (!Thread.currentThread().isInterrupted()) {
