@@ -107,7 +107,8 @@ public class WikiCrawler {
                 "CREATE TABLE IF NOT EXISTS pages (" +
                 "title TEXT PRIMARY KEY, " +
                 "content TEXT NOT NULL, " +
-                "categories TEXT)";
+                "categories TEXT, " +
+                "lastModify TEXT NOT NULL)";
 
         // Register the default sqlite driver.
         Class.forName("org.sqlite.JDBC");

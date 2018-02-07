@@ -11,9 +11,12 @@ import java.net.URL;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
@@ -110,6 +113,7 @@ public class CrawlThread extends Thread {
             Element elTitle = doc.getElementById("firstHeading"); // key
             Element elContent = doc.selectFirst("#mw-content-text .mw-parser-output"); // value 1
             Element elCategory = doc.getElementById("mw-normal-catlinks"); // value 2
+            Elements elScripts = doc.getElementsByTag("script");
 
             // Category could be null
             if (elTitle != null && elContent != null) {
@@ -143,8 +147,21 @@ public class CrawlThread extends Thread {
                         .map(String::trim)
                         .collect(Collectors.toList());
 
+                // The last modification timestamp is stored in the 2nd <script> tag from the bottom.
+                LocalDateTime lastModify = elScripts.stream().skip(elScripts.size() - 2).limit(1)
+                        // Something like ... "timestamp":"what we want" ...
+                        .map(el -> {
+                            Pattern pattern = Pattern.compile("\"timestamp\":\"([^\"]*)");
+                            Matcher matcher = pattern.matcher(el.html());
+                            return matcher.find() && matcher.groupCount() == 1 ? matcher.group(1) : null;
+                        }).filter(Objects::nonNull)
+                        // It is in a format of 20180125092740.
+                        .map(timestamp -> LocalDateTime.parse(timestamp, DateTimeFormatter.ofPattern("yyyyMMddHHmmss")))
+                        // If not found, use current date time as the last modification.
+                        .findFirst().orElse(LocalDateTime.now());
+
                 // Put into writing queue
-                try { pageQueue.put(new WikiPage(title, content, categories)); }
+                try { pageQueue.put(new WikiPage(title, content, categories, lastModify)); }
                 // Oops! Something wrong...
                 catch (InterruptedException e) { return; }
 
