@@ -117,8 +117,7 @@ public class CrawlThread extends Thread {
             Element elCategory = doc.getElementById("mw-normal-catlinks"); // value 2
             Element elLastMod = doc.getElementById("footer-info-lastmod");
 
-            // Category could be null
-            if (elTitle != null && elContent != null) {
+            if (elTitle != null && elContent != null && elCategory != null) {
                 String title = elTitle.text().trim();
 
                 // Remove all reference <sup>s.
@@ -142,9 +141,7 @@ public class CrawlThread extends Thread {
                         .collect(Collectors.joining("\n"));
 
                 // For categories, we want the text in `#mw-normal-catlinks ul > li`
-                List<String> categories = elCategory == null
-                        ? new ArrayList<>()
-                        : elCategory.select("ul > li").stream()
+                List<String> categories = elCategory.select("ul > li").stream()
                         .map(Element::text)
                         .map(String::trim)
                         .collect(Collectors.toList());

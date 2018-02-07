@@ -34,15 +34,15 @@ public class Launcher {
         if (args.length <= 0) {
             printMessage("subroutine is not specified");
             printUsage();
-        } else {
-            if (!subroutines.containsKey(args[0])) {
-                printMessage("invalid subroutine: " + args[0]);
-                printUsage();
-            }
-
-            Class<?> clazz = Class.forName(subroutines.get(args[0]).getClassName());
-            Method method = clazz.getMethod("main", String[].class);
-            method.invoke(null, (Object) Arrays.stream(args).skip(1).toArray(String[]::new));
         }
+
+        if (!subroutines.containsKey(args[0])) {
+            printMessage("invalid subroutine: " + args[0]);
+            printUsage();
+        }
+
+        Class<?> clazz = Class.forName(subroutines.get(args[0]).getClassName());
+        Method method = clazz.getMethod("main", String[].class);
+        method.invoke(null, (Object) Arrays.stream(args).skip(1).toArray(String[]::new));
     }
 }
