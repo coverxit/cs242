@@ -5,6 +5,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
 import java.util.stream.Collectors;
@@ -63,7 +64,7 @@ public class WriterThread extends Thread {
                     statement.setString(1, page.getTitle());
                     statement.setString(2, page.getContent());
                     statement.setString(3, page.getCategories().stream().collect(Collectors.joining("|")));
-                    statement.setString(4, page.getLastModify().toString());
+                    statement.setString(4, page.getLastModify().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
                     statement.addBatch();
 
                     if (++bufferedCount % BATCH_WRITE_COUNT == 0) {

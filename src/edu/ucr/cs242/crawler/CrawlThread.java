@@ -10,6 +10,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -19,6 +20,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * The actual thread for crawling, also a producer class.
@@ -113,7 +115,7 @@ public class CrawlThread extends Thread {
             Element elTitle = doc.getElementById("firstHeading"); // key
             Element elContent = doc.selectFirst("#mw-content-text .mw-parser-output"); // value 1
             Element elCategory = doc.getElementById("mw-normal-catlinks"); // value 2
-            Elements elScripts = doc.getElementsByTag("script");
+            Element elLastMod = doc.getElementById("footer-info-lastmod");
 
             // Category could be null
             if (elTitle != null && elContent != null) {
@@ -148,15 +150,19 @@ public class CrawlThread extends Thread {
                         .collect(Collectors.toList());
 
                 // The last modification timestamp is stored in the 2nd <script> tag from the bottom.
-                LocalDateTime lastModify = elScripts.stream().skip(elScripts.size() - 2).limit(1)
-                        // Something like ... "timestamp":"what we want" ...
+                LocalDateTime lastModify = elLastMod == null
+                        ? LocalDateTime.now()
+                        : Stream.of(elLastMod)
+                        // Something like "This page was last edited on 18 January 2018, at 21:30."
                         .map(el -> {
-                            Pattern pattern = Pattern.compile("\"timestamp\":\"([^\"]*)");
+                            Pattern pattern = Pattern.compile("edited on ([^,]*), at ([^.]*)");
                             Matcher matcher = pattern.matcher(el.html());
-                            return matcher.find() && matcher.groupCount() == 1 ? matcher.group(1) : null;
+                            return matcher.find() && matcher.groupCount() == 2 ?
+                                    matcher.group(1) + " " + matcher.group(2) : null;
                         }).filter(Objects::nonNull)
-                        // It is in a format of 20180125092740.
-                        .map(timestamp -> LocalDateTime.parse(timestamp, DateTimeFormatter.ofPattern("yyyyMMddHHmmss")))
+                        // It is in a format of 18 January 2018, at 21:30.
+                        .map(time -> LocalDateTime.parse(time,
+                                DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm", Locale.US)))
                         // If not found, use current date time as the last modification.
                         .findFirst().orElse(LocalDateTime.now());
 
