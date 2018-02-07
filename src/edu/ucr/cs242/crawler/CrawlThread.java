@@ -162,6 +162,10 @@ public class CrawlThread extends Thread {
                         // If not found, use current date time as the last modification.
                         .findFirst().orElse(LocalDateTime.now());
 
+                // We won't store empty page.
+                if (content.isEmpty() || categories.isEmpty())
+                    return;
+
                 // Put into writing queue
                 try { pageQueue.put(new WikiPage(title, content, categories, lastModify)); }
                 // Oops! Something wrong...
