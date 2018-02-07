@@ -150,9 +150,8 @@ public class CrawlThread extends Thread {
                         .collect(Collectors.toList());
 
                 // The last modification timestamp is stored in the 2nd <script> tag from the bottom.
-                LocalDateTime lastModify = elLastMod == null
-                        ? LocalDateTime.now()
-                        : Stream.of(elLastMod)
+                // If not found, use current date time as the last modification.
+                LocalDateTime lastModify = elLastMod == null ? LocalDateTime.now() : Stream.of(elLastMod)
                         // Something like "This page was last edited on 18 January 2018, at 21:30."
                         .map(el -> {
                             Pattern pattern = Pattern.compile("edited on ([^,]*), at ([^.]*)");
@@ -160,7 +159,7 @@ public class CrawlThread extends Thread {
                             return matcher.find() && matcher.groupCount() == 2 ?
                                     matcher.group(1) + " " + matcher.group(2) : null;
                         }).filter(Objects::nonNull)
-                        // It is in a format of 18 January 2018, at 21:30.
+                        // It is in a format of 2 January 2018, at 21:30.
                         .map(time -> LocalDateTime.parse(time,
                                 DateTimeFormatter.ofPattern("d MMMM yyyy HH:mm", Locale.US)))
                         // If not found, use current date time as the last modification.
