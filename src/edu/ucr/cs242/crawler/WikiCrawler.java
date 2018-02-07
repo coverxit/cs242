@@ -102,13 +102,15 @@ public class WikiCrawler {
      * @param jdbcUrl The JDBC connection string.
      * @return Whether the table creation succeeded.
      */
-    private static boolean initializeDatabase(String jdbcUrl) {
+    private static boolean initializeDatabase(String jdbcUrl) throws ClassNotFoundException {
         final String SQL_CREATE =
                 "CREATE TABLE IF NOT EXISTS pages (" +
                 "title TEXT PRIMARY KEY, " +
                 "content TEXT NOT NULL, " +
                 "categories TEXT)";
 
+        // Register the default sqlite driver.
+        Class.forName("org.sqlite.JDBC");
         try (Connection dbConnection = DriverManager.getConnection(jdbcUrl);
              Statement query = dbConnection.createStatement()) {
             query.execute(SQL_CREATE);
@@ -135,7 +137,7 @@ public class WikiCrawler {
         System.out.println();
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws ClassNotFoundException {
         // Default values
         final int NUMBER_OF_THREADS = 10;
         final int NUMBER_OF_PAGES = 750000;
