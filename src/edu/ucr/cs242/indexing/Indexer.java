@@ -87,7 +87,7 @@ public class Indexer {
 
             if (after == numOfPages || after % 1000 == 0) {
                 System.out.format("Indexer has indexed %d pages, %.3f%% completed. Elapsed time: %s.%n",
-                        after, after / (float) numOfPages * 100, Utility.elapsedTime(startAt, now));
+                        after, after * 100.0f / numOfPages, Utility.elapsedTime(startAt, now));
             }
         }
     }
