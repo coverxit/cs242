@@ -5,7 +5,7 @@
 To compile and run the `Crawler`:
 
 ```bash
-javac -cp "./:./lib/commons-cli-1.4.jar:./lib/jsoup-1.11.2.jar:./lib/sqlite-jdbc-3.21.0.jar" src/edu/ucr/cs242/crawler/*.java
+javac -cp "./:./lib/commons-cli-1.4.jar:./lib/jsoup-1.11.2.jar:./lib/sqlite-jdbc-3.21.0.jar" src/edu/ucr/cs242/*.java src/edu/ucr/cs242/crawler/*.java
 java -cp "./src:./lib/commons-cli-1.4.jar:./lib/jsoup-1.11.2.jar:./lib/sqlite-jdbc-3.21.0.jar" edu.ucr.cs242.crawler.WikiCrawler <jdbc-url>
 ```
 
