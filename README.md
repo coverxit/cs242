@@ -2,6 +2,18 @@
 
 ## Part A
 
+### Run by JAR
+
+To run the whole thing by the `cs242.jar`:
+
+```bash
+cd bin/
+java -jar cs242.jar <subroutine> [options] <arguments...>
+```
+
+
+### Run by class
+
 To use the `Launcher` to select which subroutine to run:
 
 ```bash
