@@ -80,7 +80,7 @@ public class IndexThread extends Thread {
 
                 indexWriter.commit();
 
-                localCount += localCount;
+                indexedCount += localCount;
                 indexer.reportProgress(localCount);
             } catch (SQLException e) {
                 System.out.println("IndexerThread " + threadId + " throws an SQLException.");

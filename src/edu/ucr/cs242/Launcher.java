@@ -16,7 +16,7 @@ public class Launcher {
         subroutines.put("indexer",
                 new Subroutine("indexer",
                         "edu.ucr.cs242.indexing.Indexer",
-                        "execute the indexer"));
+                        "execute the Lucene indexer"));
     }
 
     private static void printMessage(String message) {
