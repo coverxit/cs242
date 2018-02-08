@@ -12,11 +12,6 @@ public class IndexThread extends Thread {
     private final int numOfPages;
     private final Connection dbConnection;
     private final IndexWriter indexWriter;
-    private OnThreadExitEventListener exitEventListener;
-
-    public void setExitEventListener(OnThreadExitEventListener exitEventListener) {
-        this.exitEventListener = exitEventListener;
-    }
 
     /**
      * Consturct an indexing thread with given settings.

@@ -70,7 +70,6 @@ public class Indexer {
         for (int i = 0, pageStartIndex = 0; i < numOfThreads; i++) {
             int partition = Utility.calculatePartition(numOfPages, numOfThreads, i);
             threads[i] = new IndexThread(this, i, pageStartIndex, partition, dbConnection, indexWriter);
-            threads[i].setExitEventListener(indexedCount::addAndGet);
             threads[i].start();
             pageStartIndex += partition;
         }
