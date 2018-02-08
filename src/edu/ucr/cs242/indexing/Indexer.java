@@ -219,12 +219,12 @@ public class Indexer {
             try {
                 int numOfThreads = Integer.parseInt(cmd.getOptionValue("threads", String.valueOf(NUMBER_OF_THREADS)));
 
-                Optional<Connection> dbConnection = getConnection(args[0]);
+                Optional<Connection> dbConnection = getConnection(argList.get(0));
                 if (!dbConnection.isPresent()) {
                     printMessage("invalid JDBC url");
                     printUsage();
                 } else {
-                    Path indexOutputPath = Paths.get(args[1]);
+                    Path indexOutputPath = Paths.get(argList.get(1));
                     if (!Files.exists(indexOutputPath) || !Files.isDirectory(indexOutputPath)) {
                         printMessage("invalid index output path (not exist or not directory)");
                         printUsage();
