@@ -79,17 +79,11 @@ public class Indexer {
      * @param count The count of pages that has been indexed.
      */
     public void reportProgress(int count) {
-        // Precisely timing
-        LocalDateTime now = LocalDateTime.now();
-
-        synchronized (indexedCount) {
-            int after = indexedCount.addAndGet(count);
-
-            if (after == numOfPages || after % 1000 == 0) {
-                System.out.format("%sIndexer has indexed %d pages, %.3f%% completed. Elapsed time: %s.%n",
-                        after == numOfPages ? "Summary: " : "",
-                        after, after * 100.0f / numOfPages, Utility.elapsedTime(startAt, now));
-            }
+        int after = indexedCount.addAndGet(count);
+        if (after == numOfPages || after % 1000 == 0) {
+            System.out.format("%sIndexer has indexed %d pages, %.3f%% completed. Elapsed time: %s.%n",
+                    after == numOfPages ? "Summary: " : "",
+                    after, after * 100.0f / numOfPages, Utility.elapsedTime(startAt, LocalDateTime.now()));
         }
     }
 
