@@ -56,9 +56,7 @@ public class WriterThread extends Thread {
         int committedCount = 0;
 
         System.out.println("WriterThread " + threadId + " started at " + LocalDateTime.now().toLocalTime() + ".");
-        try {
-            PreparedStatement statement = dbConnection.prepareStatement(SQL_INSERT);
-
+        try (PreparedStatement statement = dbConnection.prepareStatement(SQL_INSERT)) {
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     WikiPage page = pageQueue.take();

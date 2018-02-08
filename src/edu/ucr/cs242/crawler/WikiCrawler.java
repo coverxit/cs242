@@ -78,7 +78,7 @@ public class WikiCrawler {
         Utility.waitThreads(threads);
 
         System.out.format("Summary: WikiCrawler committed %d pages in total. ", committedCount.get());
-        System.out.format("Elapsed time: %s%n", Utility.elapsedTime(startAt, LocalDateTime.now()));
+        System.out.format("Elapsed time: %s.%n", Utility.elapsedTime(startAt, LocalDateTime.now()));
     }
 
     /**

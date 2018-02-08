@@ -228,7 +228,7 @@ public class CrawlThread extends Thread {
                 process(nextUrl);
 
                 // Report crawling progress.
-                if (crawlCount % Math.min(numOfPages, WriterThread.BATCH_WRITE_COUNT) == 0) {
+                if (crawlCount > 0 && crawlCount % Math.min(numOfPages, WriterThread.BATCH_WRITE_COUNT) == 0) {
                     reportProgress(false, startAt);
                 }
 
