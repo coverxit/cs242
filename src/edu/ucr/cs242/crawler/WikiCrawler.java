@@ -1,18 +1,14 @@
 package edu.ucr.cs242.crawler;
 
+import edu.ucr.cs242.Utility;
 import org.apache.commons.cli.*;
 
-import java.io.BufferedOutputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.PrintStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -68,7 +64,7 @@ public class WikiCrawler {
 
         for (int i = 0; i < numOfThreads; i++) {
             try {
-                threads[i] = new CrawlThread(i, visitedUrls, numOfPages / numOfThreads,
+                threads[i] = new CrawlThread(i, visitedUrls, Utility.calculatePartition(numOfPages, numOfThreads, i),
                         crawlDepth, crawlInterval, entryUrl, crawlHostRegex, crawlPathRegex, jdbcUrl);
                 threads[i].setWriterExitListener(committedCount::addAndGet);
                 threads[i].start();
@@ -79,22 +75,10 @@ public class WikiCrawler {
             }
         }
 
-        for (int i = 0; i < numOfThreads; i++) {
-            if (threads[i] != null) {
-                // Wait threads to exit.
-                try { threads[i].join(); }
-                catch (InterruptedException e) { threads[i].interrupt(); }
-            }
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-        Duration elapsed = Duration.between(startAt, now);
-        long hours = elapsed.toHours();
-        long minutes = elapsed.toMinutes() % 60;
-        long seconds = elapsed.getSeconds() % 60;
+        Utility.waitThreads(threads);
 
         System.out.format("Summary: WikiCrawler committed %d pages in total. ", committedCount.get());
-        System.out.format("Elapsed time: %02d:%02d:%02d.%n", hours, minutes, seconds);
+        System.out.format("Elapsed time: %s%n", Utility.elapsedTime(startAt, LocalDateTime.now()));
     }
 
     /**
@@ -229,14 +213,9 @@ public class WikiCrawler {
             }
 
             String logOutput = cmd.getOptionValue("log-output");
-            if (logOutput != null) {
-                try {
-                    PrintStream ps = new PrintStream(new BufferedOutputStream(new FileOutputStream(logOutput)), true);
-                    System.setOut(ps);
-                } catch (FileNotFoundException e) {
-                    printMessage("invalid log file path");
-                    printUsage();
-                }
+            if (!Utility.openOutputLog(logOutput)) {
+                printMessage("invalid log file path");
+                printUsage();
             }
 
             try {

@@ -1,5 +1,7 @@
 package edu.ucr.cs242.crawler;
 
+import edu.ucr.cs242.OnThreadExitEventListener;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -27,9 +29,9 @@ public class WriterThread extends Thread {
     private final BlockingQueue<WikiPage> pageQueue;
 
     private Connection dbConnection;
-    private OnWriterExitEventListener exitEventListener;
+    private OnThreadExitEventListener exitEventListener;
 
-    public void setExitEventListener(OnWriterExitEventListener exitEventListener) {
+    public void setExitEventListener(OnThreadExitEventListener exitEventListener) {
         this.exitEventListener = exitEventListener;
     }
 

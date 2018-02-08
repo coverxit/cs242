@@ -1,5 +1,6 @@
 package edu.ucr.cs242.crawler;
 
+import edu.ucr.cs242.OnThreadExitEventListener;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -84,7 +85,7 @@ public class CrawlThread extends Thread {
         this.writer = new WriterThread(threadId, jdbcUrl, pageQueue);
     }
 
-    public void setWriterExitListener(OnWriterExitEventListener exitEventListener) {
+    public void setWriterExitListener(OnThreadExitEventListener exitEventListener) {
         writer.setExitEventListener(exitEventListener);
     }
 
