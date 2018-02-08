@@ -92,7 +92,8 @@ public class WikiCrawler {
                 "title TEXT PRIMARY KEY, " +
                 "content TEXT NOT NULL, " +
                 "categories TEXT NOT NULL, " +
-                "lastModify TEXT NOT NULL)";
+                "lastModify TEXT NOT NULL, " +
+                "outLinks TEXT)";
 
         // Register the default sqlite driver.
         Class.forName("org.sqlite.JDBC");
@@ -130,7 +131,7 @@ public class WikiCrawler {
         final int CRAWL_INTERVAL = 5000;
         final String ENTRY_URL = "https://en.wikipedia.org/wiki/Special:Random";
         final String CRAWL_HOST_REGEX = "^en.wikipedia.org$";
-        final String CRAWL_PATH_REGEX = "^/wiki/[^:]*$"; // Special pages (such as Help:Category) are not crawled
+        final String CRAWL_PATH_REGEX = "^/wiki/([^:]*)$"; // Special pages (such as Help:Category) are not crawled
 
         Options options = new Options();
         options.addOption(Option.builder("t")

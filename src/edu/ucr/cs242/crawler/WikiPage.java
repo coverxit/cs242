@@ -9,6 +9,8 @@ public class WikiPage {
     private List<String> categories;
     private LocalDateTime lastModify;
 
+    private List<String> outLinks;
+
     public String getTitle() {
         return title;
     }
@@ -25,17 +27,23 @@ public class WikiPage {
         return lastModify;
     }
 
+    public List<String> getOutLinks() {
+        return outLinks;
+    }
+
     /**
      * Represent a web page in Wikipedia.
      * @param title      The page title.
      * @param content    The page content.
      * @param categories The categories the page belongs to.
      * @param lastModify The last modification time of the page.
+     * @param outLinks   The outgoing links (titles) in this page.
      */
-    public WikiPage(String title, String content, List<String> categories, LocalDateTime lastModify) {
+    public WikiPage(String title, String content, List<String> categories, LocalDateTime lastModify, List<String> outLinks) {
         this.title = title;
         this.content = content;
         this.categories = categories;
         this.lastModify = lastModify;
+        this.outLinks = outLinks;
     }
 }

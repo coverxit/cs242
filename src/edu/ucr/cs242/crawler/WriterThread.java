@@ -23,7 +23,8 @@ public class WriterThread extends Thread {
     /**
      * The SQL insert statement.
      */
-    public static final String SQL_INSERT = "INSERT OR IGNORE INTO pages (title, content, categories, lastModify) VALUES (?, ?, ?, ?)";
+    public static final String SQL_INSERT =
+            "INSERT OR IGNORE INTO pages (title, content, categories, lastModify, outLinks) VALUES (?, ?, ?, ?, ?)";
 
     private final int threadId;
     private final BlockingQueue<WikiPage> pageQueue;
@@ -65,6 +66,7 @@ public class WriterThread extends Thread {
                     statement.setString(2, page.getContent());
                     statement.setString(3, page.getCategories().stream().collect(Collectors.joining("|")));
                     statement.setString(4, page.getLastModify().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+                    statement.setString(5, page.getOutLinks().stream().collect(Collectors.joining("|")));
                     statement.addBatch();
 
                     if (++bufferedCount % BATCH_WRITE_COUNT == 0) {

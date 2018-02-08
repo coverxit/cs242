@@ -1,20 +1,23 @@
 package edu.ucr.cs242.crawler;
 
 import edu.ucr.cs242.OnThreadExitEventListener;
+import edu.ucr.cs242.Utility;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.sql.SQLException;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -164,8 +167,37 @@ public class CrawlThread extends Thread {
                 if (content.isEmpty() || categories.isEmpty())
                     return;
 
+                // Get all valid `#mw-content-text > a`s.
+                // We want <a> with attribute of href.
+                Supplier<Stream<URL>> linkSupplier = () -> elContent.select("a[href]").stream()
+                        .map(a -> a.attr("href"))
+                        // Map href into URL object
+                        .map(href -> {
+                            try { return new URL(actualUrl, href); }
+                            catch (MalformedURLException e) { return null; }
+                        }).filter(Objects::nonNull)
+                        // We only want the link inside a given host and the path meets some requirement.
+                        .filter(url -> url.getHost().matches(crawlHostRegex) && url.getPath().matches(crawlPathRegex));
+
+                // Save all the outgoing titles.
+                List<String> outLinks = linkSupplier.get().map(URL::getPath)
+                        // Decode URL to UTF-8 first.
+                        .map(url -> {
+                            try { return URLDecoder.decode(url, "UTF-8"); }
+                            catch (UnsupportedEncodingException e) { return null; }
+                        }).filter(Objects::nonNull)
+                        // crawlPathRegex has built-in group, to fetch the title.
+                        .map(url -> {
+                            Pattern pattern = Pattern.compile(crawlPathRegex);
+                            Matcher matcher = pattern.matcher(url);
+                            return matcher.find() && matcher.groupCount() == 1 ? matcher.group(1) : null;
+                        }).filter(Objects::nonNull)
+                        // We save titles, thus replace all _ in the link to space.
+                        .map(dest -> dest.replace('_', ' '))
+                        .distinct().collect(Collectors.toList());
+
                 // Put into writing queue
-                try { pageQueue.put(new WikiPage(title, content, categories, lastModify)); }
+                try { pageQueue.put(new WikiPage(title, content, categories, lastModify, outLinks)); }
                 // Oops! Something wrong...
                 catch (InterruptedException e) { return; }
 
@@ -176,37 +208,21 @@ public class CrawlThread extends Thread {
                 if (nextUrl.getDepth() >= crawlDepth)
                     return;
 
-                // Push all valid `#mw-content-text > a` into the stack.
-                // We want <a> with attribute of href.
-                elContent.select("a[href]").stream()
-                        .map(a -> a.attr("href"))
-                        // Map href into URL object
-                        .map(href -> {
-                            try { return new URL(actualUrl, href); }
-                            catch (MalformedURLException e) { return null; }
-                        }).filter(Objects::nonNull)
-                        // We only want the link inside a given host and the path meets some requirement.
-                        .filter(url -> url.getHost().matches(crawlHostRegex) && url.getPath().matches(crawlPathRegex))
-                        // Reconstruct the URL, remove the anchor part.
-                        // There may be some duplicate URLs after this processing.
-                        .map(url -> url.getProtocol() + "://" + url.getHost() + url.getFile())
-                        .distinct()
+                // Reconstruct the URL, remove the anchor part.
+                // There may be some duplicate URLs after this processing.
+                linkSupplier.get().map(url -> url.getProtocol() + "://" + url.getHost() + url.getFile())
                         // Check if the URL has already stored in the stack.
-                        .filter(url -> !visitedUrls.contains(url))
+                        .distinct().filter(url -> !visitedUrls.contains(url))
+                        // Push into queue.
                         .forEachOrdered(url -> nextUrlQueue.add(new QueueItem(url, nextUrl.getDepth() + 1)));
             }
         }
     }
 
     private void reportProgress(boolean summary, LocalDateTime startAt) {
-        LocalDateTime now = LocalDateTime.now();
-        Duration elapsed = Duration.between(startAt, now);
-        long hours = elapsed.toHours();
-        long minutes = elapsed.toMinutes() % 60;
-        long seconds = elapsed.getSeconds() % 60;
-
-        System.out.format("%sCrawlThread %d crawled %d pages, %.2f%% completed. Elapsed time: %02d:%02d:%02d.%n",
-                summary ? "Summary: " : "", threadId, crawlCount, crawlCount * 100.0f / numOfPages, hours, minutes, seconds);
+        System.out.format("%sCrawlThread %d crawled %d pages, %.2f%% completed. Elapsed time: %s.%n",
+                summary ? "Summary: " : "", threadId, crawlCount, crawlCount * 100.0f / numOfPages,
+                Utility.elapsedTime(startAt, LocalDateTime.now()));
     }
 
     @Override
