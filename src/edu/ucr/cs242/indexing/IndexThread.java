@@ -52,7 +52,8 @@ public class IndexThread extends Thread {
     public void run() {
         int indexedCount = 0;
 
-        System.out.println("IndexerThread " + threadId + " started at " + LocalDateTime.now().toLocalTime() + ".");
+        System.out.println("IndexerThread " + threadId + " started at " + LocalDateTime.now().toLocalTime() + ". " +
+                "Pages to crawl: " + numOfPages + ".");
         while (indexedCount < numOfPages) {
             int localCount = 0;
 
