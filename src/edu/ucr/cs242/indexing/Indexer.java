@@ -86,7 +86,8 @@ public class Indexer {
             int after = indexedCount.addAndGet(count);
 
             if (after == numOfPages || after % 1000 == 0) {
-                System.out.format("Indexer has indexed %d pages, %.3f%% completed. Elapsed time: %s.%n",
+                System.out.format("%sIndexer has indexed %d pages, %.3f%% completed. Elapsed time: %s.%n",
+                        after == numOfPages ? "Summary: " : "",
                         after, after * 100.0f / numOfPages, Utility.elapsedTime(startAt, now));
             }
         }
@@ -120,9 +121,6 @@ public class Indexer {
                 writer.commit();
             }
             writer.close();
-
-            System.out.format("Summary: Indexer indexed %d pages in total. ", indexedCount.get());
-            System.out.format("Elapsed time: %s.%n", Utility.elapsedTime(startAt, LocalDateTime.now()));
         } catch (IOException e) {
             System.out.println("Indexer throws an IOException: " + e.getMessage());
         }
