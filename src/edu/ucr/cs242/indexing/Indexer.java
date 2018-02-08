@@ -81,7 +81,7 @@ public class Indexer {
     public void reportProgress(int count) {
         int after = indexedCount.addAndGet(count);
         if (after == numOfPages || after % 1000 == 0) {
-            System.out.format("%sIndexer has indexed %d pages, %.3f%% completed. Elapsed time: %s.%n",
+            System.out.format("%sIndexer has indexed %d pages, %.2f%% completed. Elapsed time: %s.%n",
                     after == numOfPages ? "Summary: " : "",
                     after, after * 100.0f / numOfPages, Utility.elapsedTime(startAt, LocalDateTime.now()));
         }
