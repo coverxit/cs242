@@ -126,7 +126,7 @@ public class WikiCrawler {
     public static void main(String[] args) throws ClassNotFoundException {
         // Default values
         final int NUMBER_OF_THREADS = 10;
-        final int NUMBER_OF_PAGES = 1000000;
+        final int NUMBER_OF_PAGES = 750000;
         final int CRAWL_DEPTH = 10;
         final int CRAWL_INTERVAL = 5000;
         final String ENTRY_URL = "https://en.wikipedia.org/wiki/Special:Random";
