@@ -30,8 +30,9 @@ public class Utility {
         long hours = elapsed.toHours();
         long minutes = elapsed.toMinutes() % 60;
         long seconds = elapsed.getSeconds() % 60;
+        long milliseconds = elapsed.toMillis() % 1000;
 
-        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+        return String.format("%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);
     }
 
     public static boolean openOutputLog(String logOutput) {

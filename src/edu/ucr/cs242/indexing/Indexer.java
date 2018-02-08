@@ -29,10 +29,7 @@ public class Indexer {
     private final Path indexOutputPath;
     private final AtomicInteger indexedCount = new AtomicInteger(0);
     private final int numOfPages;
-
-    public int getNumOfPages() {
-        return numOfPages;
-    }
+    private LocalDateTime startAt;
 
     public Indexer(int numOfThreads, Connection dbConnection, Path indexOutputPath) {
         this.numOfThreads = numOfThreads;
@@ -43,11 +40,11 @@ public class Indexer {
         // Check number of pages we have.
         if (numOfPages <= 0) {
             System.out.println("Indexer cannot find any pages to index. Exiting...");
-            System.exit((int) numOfPages);
+            System.exit(numOfPages);
         }
     }
 
-    public int fetchPageCount() {
+    private int fetchPageCount() {
         final String SQL_COUNT = "SELECT COUNT(*) FROM pages";
         int numOfPages = -1;
 
@@ -77,6 +74,24 @@ public class Indexer {
         Utility.waitThreads(threads);
     }
 
+    /**
+     * For thread's invoke of reporting its progress.
+     * @param count The count of pages that has been indexed.
+     */
+    public void reportProgress(int count) {
+        // Precisely timing
+        LocalDateTime now = LocalDateTime.now();
+
+        synchronized (indexedCount) {
+            int after = indexedCount.addAndGet(count);
+
+            if (after == numOfPages || after % 1000 == 0) {
+                System.out.format("Indexer has indexed %d pages, %.3f%% completed. Elapsed time: %s.%n",
+                        after, after / (float) numOfPages * 100, Utility.elapsedTime(startAt, now));
+            }
+        }
+    }
+
     public void start() {
         try {
             // Create a special analyzer for categories, since they are separated by |.
@@ -94,7 +109,7 @@ public class Indexer {
             IndexWriter writer = new IndexWriter(directory, config);
 
             // Now we can start the indexer.
-            LocalDateTime startAt = LocalDateTime.now();
+            startAt = LocalDateTime.now();
             System.out.println("Indexer started at " + startAt.toLocalTime() + ". " +
                     "Pages to index: " + numOfPages + ".");
 
@@ -107,7 +122,7 @@ public class Indexer {
             writer.close();
 
             System.out.format("Summary: Indexer indexed %d pages in total. ", indexedCount.get());
-            System.out.format("Elapsed time: %s%n", Utility.elapsedTime(startAt, LocalDateTime.now()));
+            System.out.format("Elapsed time: %s.%n", Utility.elapsedTime(startAt, LocalDateTime.now()));
         } catch (IOException e) {
             System.out.println("Indexer throws an IOException: " + e.getMessage());
         }
@@ -210,8 +225,8 @@ public class Indexer {
                     printUsage();
                 } else {
                     Path indexOutputPath = Paths.get(args[1]);
-                    if (!Files.isDirectory(indexOutputPath)) {
-                        printMessage("invalid index output path");
+                    if (!Files.exists(indexOutputPath) || !Files.isDirectory(indexOutputPath)) {
+                        printMessage("invalid index output path (not exist or not directory)");
                         printUsage();
                     }
 
