@@ -1,9 +1,9 @@
 package edu.ucr.cs242.crawler;
 
+import edu.ucr.cs242.OnThreadExitEventListener;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -11,11 +11,14 @@ import java.net.URL;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.stream.Collector;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * The actual thread for crawling, also a producer class.
@@ -82,7 +85,7 @@ public class CrawlThread extends Thread {
         this.writer = new WriterThread(threadId, jdbcUrl, pageQueue);
     }
 
-    public void setWriterExitListener(OnWriterExitEventListener exitEventListener) {
+    public void setWriterExitListener(OnThreadExitEventListener exitEventListener) {
         writer.setExitEventListener(exitEventListener);
     }
 
@@ -110,9 +113,9 @@ public class CrawlThread extends Thread {
             Element elTitle = doc.getElementById("firstHeading"); // key
             Element elContent = doc.selectFirst("#mw-content-text .mw-parser-output"); // value 1
             Element elCategory = doc.getElementById("mw-normal-catlinks"); // value 2
+            Element elLastMod = doc.getElementById("footer-info-lastmod");
 
-            // Category could be null
-            if (elTitle != null && elContent != null) {
+            if (elTitle != null && elContent != null && elCategory != null) {
                 String title = elTitle.text().trim();
 
                 // Remove all reference <sup>s.
@@ -136,15 +139,33 @@ public class CrawlThread extends Thread {
                         .collect(Collectors.joining("\n"));
 
                 // For categories, we want the text in `#mw-normal-catlinks ul > li`
-                List<String> categories = elCategory == null
-                        ? new ArrayList<>()
-                        : elCategory.select("ul > li").stream()
+                List<String> categories = elCategory.select("ul > li").stream()
                         .map(Element::text)
                         .map(String::trim)
                         .collect(Collectors.toList());
 
+                // The last modification timestamp is stored in the 2nd <script> tag from the bottom.
+                // If not found, use current date time as the last modification.
+                LocalDateTime lastModify = elLastMod == null ? LocalDateTime.now() : Stream.of(elLastMod)
+                        // Something like "This page was last edited on 18 January 2018, at 21:30."
+                        .map(el -> {
+                            Pattern pattern = Pattern.compile("edited on ([^,]*), at ([^.]*)");
+                            Matcher matcher = pattern.matcher(el.html());
+                            return matcher.find() && matcher.groupCount() == 2 ?
+                                    matcher.group(1) + " " + matcher.group(2) : null;
+                        }).filter(Objects::nonNull)
+                        // It is in a format of 2 January 2018, at 21:30.
+                        .map(time -> LocalDateTime.parse(time,
+                                DateTimeFormatter.ofPattern("d MMMM yyyy HH:mm", Locale.US)))
+                        // If not found, use current date time as the last modification.
+                        .findFirst().orElse(LocalDateTime.now());
+
+                // We won't store empty page.
+                if (content.isEmpty() || categories.isEmpty())
+                    return;
+
                 // Put into writing queue
-                try { pageQueue.put(new WikiPage(title, content, categories)); }
+                try { pageQueue.put(new WikiPage(title, content, categories, lastModify)); }
                 // Oops! Something wrong...
                 catch (InterruptedException e) { return; }
 
@@ -184,7 +205,7 @@ public class CrawlThread extends Thread {
         long minutes = elapsed.toMinutes() % 60;
         long seconds = elapsed.getSeconds() % 60;
 
-        System.out.format("%sCrawlThread %d crawled %d pages, %.2f%% completed. Elapsed time: %02d:%02d:%02d.\n",
+        System.out.format("%sCrawlThread %d crawled %d pages, %.2f%% completed. Elapsed time: %02d:%02d:%02d.%n",
                 summary ? "Summary: " : "", threadId, crawlCount, crawlCount * 100.0f / numOfPages, hours, minutes, seconds);
     }
 

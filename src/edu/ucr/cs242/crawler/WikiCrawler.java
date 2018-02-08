@@ -1,18 +1,14 @@
 package edu.ucr.cs242.crawler;
 
+import edu.ucr.cs242.Utility;
 import org.apache.commons.cli.*;
 
-import java.io.BufferedOutputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.PrintStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -68,7 +64,7 @@ public class WikiCrawler {
 
         for (int i = 0; i < numOfThreads; i++) {
             try {
-                threads[i] = new CrawlThread(i, visitedUrls, numOfPages / numOfThreads,
+                threads[i] = new CrawlThread(i, visitedUrls, Utility.calculatePartition(numOfPages, numOfThreads, i),
                         crawlDepth, crawlInterval, entryUrl, crawlHostRegex, crawlPathRegex, jdbcUrl);
                 threads[i].setWriterExitListener(committedCount::addAndGet);
                 threads[i].start();
@@ -79,22 +75,10 @@ public class WikiCrawler {
             }
         }
 
-        for (int i = 0; i < numOfThreads; i++) {
-            if (threads[i] != null) {
-                // Wait threads to exit.
-                try { threads[i].join(); }
-                catch (InterruptedException e) { threads[i].interrupt(); }
-            }
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-        Duration elapsed = Duration.between(startAt, now);
-        long hours = elapsed.toHours();
-        long minutes = elapsed.toMinutes() % 60;
-        long seconds = elapsed.getSeconds() % 60;
+        Utility.waitThreads(threads);
 
         System.out.format("Summary: WikiCrawler committed %d pages in total. ", committedCount.get());
-        System.out.format("Elapsed time: %02d:%02d:%02d.\n", hours, minutes, seconds);
+        System.out.format("Elapsed time: %s%n", Utility.elapsedTime(startAt, LocalDateTime.now()));
     }
 
     /**
@@ -102,13 +86,16 @@ public class WikiCrawler {
      * @param jdbcUrl The JDBC connection string.
      * @return Whether the table creation succeeded.
      */
-    private static boolean initializeDatabase(String jdbcUrl) {
+    private static boolean initializeDatabase(String jdbcUrl) throws ClassNotFoundException {
         final String SQL_CREATE =
                 "CREATE TABLE IF NOT EXISTS pages (" +
                 "title TEXT PRIMARY KEY, " +
                 "content TEXT NOT NULL, " +
-                "categories TEXT)";
+                "categories TEXT NOT NULL, " +
+                "lastModify TEXT NOT NULL)";
 
+        // Register the default sqlite driver.
+        Class.forName("org.sqlite.JDBC");
         try (Connection dbConnection = DriverManager.getConnection(jdbcUrl);
              Statement query = dbConnection.createStatement()) {
             query.execute(SQL_CREATE);
@@ -135,7 +122,7 @@ public class WikiCrawler {
         System.out.println();
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws ClassNotFoundException {
         // Default values
         final int NUMBER_OF_THREADS = 10;
         final int NUMBER_OF_PAGES = 750000;
@@ -215,25 +202,20 @@ public class WikiCrawler {
             }
 
             if (argList.isEmpty()) {
-                printMessage("no jdbc url");
+                printMessage("JDBC url is not specified");
                 printUsage();
             }
 
             String jdbcUrl = argList.get(0);
             if (!initializeDatabase(jdbcUrl)) {
-                printMessage("invalid jdbc url");
+                printMessage("invalid JDBC url");
                 printUsage();
             }
 
             String logOutput = cmd.getOptionValue("log-output");
-            if (logOutput != null) {
-                try {
-                    PrintStream ps = new PrintStream(new BufferedOutputStream(new FileOutputStream(logOutput)), true);
-                    System.setOut(ps);
-                } catch (FileNotFoundException e) {
-                    printMessage("invalid log file path");
-                    printUsage();
-                }
+            if (!Utility.openOutputLog(logOutput)) {
+                printMessage("invalid log file path");
+                printUsage();
             }
 
             try {

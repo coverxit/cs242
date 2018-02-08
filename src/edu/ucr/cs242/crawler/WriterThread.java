@@ -1,10 +1,13 @@
 package edu.ucr.cs242.crawler;
 
+import edu.ucr.cs242.OnThreadExitEventListener;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
 import java.util.stream.Collectors;
@@ -20,15 +23,15 @@ public class WriterThread extends Thread {
     /**
      * The SQL insert statement.
      */
-    public static final String SQL_INSERT = "INSERT OR IGNORE INTO pages (title, content, categories) VALUES (?, ?, ?)";
+    public static final String SQL_INSERT = "INSERT OR IGNORE INTO pages (title, content, categories, lastModify) VALUES (?, ?, ?, ?)";
 
     private final int threadId;
     private final BlockingQueue<WikiPage> pageQueue;
 
     private Connection dbConnection;
-    private OnWriterExitEventListener exitEventListener;
+    private OnThreadExitEventListener exitEventListener;
 
-    public void setExitEventListener(OnWriterExitEventListener exitEventListener) {
+    public void setExitEventListener(OnThreadExitEventListener exitEventListener) {
         this.exitEventListener = exitEventListener;
     }
 
@@ -63,6 +66,7 @@ public class WriterThread extends Thread {
                     statement.setString(1, page.getTitle());
                     statement.setString(2, page.getContent());
                     statement.setString(3, page.getCategories().stream().collect(Collectors.joining("|")));
+                    statement.setString(4, page.getLastModify().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
                     statement.addBatch();
 
                     if (++bufferedCount % BATCH_WRITE_COUNT == 0) {
@@ -70,7 +74,7 @@ public class WriterThread extends Thread {
                         dbConnection.commit();
                         committedCount += sum;
 
-                        System.out.format("WriterThread %d committed %d pages. Most recent one: %s.\n",
+                        System.out.format("WriterThread %d committed %d pages. Most recent one: %s.%n",
                                 threadId, sum, page.getTitle());
                     }
                 } catch (InterruptedException e) {
@@ -94,7 +98,7 @@ public class WriterThread extends Thread {
             try { dbConnection.close(); }
             catch (SQLException _e) { _e.printStackTrace(); }
 
-            System.out.format("Summary: WriterThread %d committed %d pages in total.\n", threadId, committedCount);
+            System.out.format("Summary: WriterThread %d committed %d pages in total.%n", threadId, committedCount);
 
             // Normal exit?
             if (!Thread.currentThread().isInterrupted()) {
