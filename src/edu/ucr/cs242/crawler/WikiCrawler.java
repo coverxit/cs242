@@ -55,6 +55,10 @@ public class WikiCrawler {
      * Start the crawler.
      */
     public void start() {
+        RobotPolicy policy = new RobotPolicy("cs242-crawler");
+        try { policy.parse(new URL(entryUrl)); }
+        catch (MalformedURLException e) { /* ignored */ }
+
         LocalDateTime startAt = LocalDateTime.now();
         CrawlThread[] threads = new CrawlThread[numOfThreads];
         AtomicInteger committedCount = new AtomicInteger(0);
@@ -65,7 +69,7 @@ public class WikiCrawler {
         for (int i = 0; i < numOfThreads; i++) {
             try {
                 threads[i] = new CrawlThread(i, visitedUrls, Utility.calculatePartition(numOfPages, numOfThreads, i),
-                        crawlDepth, crawlInterval, entryUrl, crawlHostRegex, crawlPathRegex, jdbcUrl);
+                        crawlDepth, crawlInterval, entryUrl, crawlHostRegex, crawlPathRegex, jdbcUrl, policy);
                 threads[i].setWriterExitListener(committedCount::addAndGet);
                 threads[i].start();
             } catch (SQLException e) {

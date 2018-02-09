@@ -35,6 +35,7 @@ public class CrawlThread extends Thread {
     private final String entryUrl;
     private final String crawlHostRegex;
     private final String crawlPathRegex;
+    private final RobotPolicy robotPolicy;
 
     private class QueueItem {
         private final String url;
@@ -72,11 +73,12 @@ public class CrawlThread extends Thread {
      * @param crawlHostRegex The url to be crawled should be within this host.
      * @param crawlPathRegex The path of the url should start with this prefix.
      * @param jdbcUrl        The JDBC url to access database.
+     * @param robotPolicy    The policy the crawler should obey.
      */
     public CrawlThread(int threadId, Set<String> visitedUrls,
                        int numOfPages, int crawlDepth, int crawlInterval,
                        String entryUrl, String crawlHostRegex, String crawlPathRegex,
-                       String jdbcUrl) throws SQLException {
+                       String jdbcUrl, RobotPolicy robotPolicy) throws SQLException {
         this.threadId = threadId;
         this.visitedUrls = visitedUrls;
         this.numOfPages = numOfPages;
@@ -86,6 +88,7 @@ public class CrawlThread extends Thread {
         this.crawlHostRegex = crawlHostRegex;
         this.crawlPathRegex = crawlPathRegex;
         this.writer = new WriterThread(threadId, jdbcUrl, pageQueue);
+        this.robotPolicy = robotPolicy;
     }
 
     /**
@@ -243,6 +246,22 @@ public class CrawlThread extends Thread {
             // nextUrlQueue may be empty, since the crawl depth limitation.
             // If so, crawl the entry url again. (Entry url is never put into visitedUrls)
             QueueItem nextUrl = nextUrlQueue.isEmpty() ? new QueueItem(entryUrl, 0) : nextUrlQueue.remove();
+
+            // Check if url is restricted by some policies.
+            try {
+                if (!robotPolicy.testURL(new URL(nextUrl.getUrl()))) {
+                    // Entry url? No need to run the crawler.
+                    if (nextUrl.getUrl().equals(entryUrl)) {
+                        System.out.println("CrawlThread " + threadId + " reported the entry url (" +
+                                entryUrl + ") is disallowed. Exiting...");
+                        break;
+                    } else {
+                        continue;
+                    }
+                }
+            } catch (MalformedURLException e) {
+                // ignored
+            }
 
             if (!visitedUrls.contains(nextUrl.getUrl())) {
                 process(nextUrl);
