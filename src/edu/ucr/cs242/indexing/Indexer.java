@@ -31,6 +31,12 @@ public class Indexer {
     private final int numOfPages;
     private LocalDateTime startAt;
 
+    /**
+     * Construct an Indexer with given settings.
+     * @param numOfThreads    The number of threads for indexing.
+     * @param dbConnection    The active database connection.
+     * @param indexOutputPath The directory to output the Lucene index.
+     */
     public Indexer(int numOfThreads, Connection dbConnection, Path indexOutputPath) {
         this.numOfThreads = numOfThreads;
         this.dbConnection = dbConnection;
@@ -76,7 +82,7 @@ public class Indexer {
 
     /**
      * For thread's invoke of reporting its progress.
-     * @param count The count of pages that has been indexed.
+     * @param count The count of pages that has been indexed during the last batch-index period.
      */
     public void reportProgress(int count) {
         int after = indexedCount.addAndGet(count);

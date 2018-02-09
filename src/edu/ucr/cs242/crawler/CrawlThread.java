@@ -88,6 +88,10 @@ public class CrawlThread extends Thread {
         this.writer = new WriterThread(threadId, jdbcUrl, pageQueue);
     }
 
+    /**
+     * Set the event listener for WriterThread's exiting.
+     * @param exitEventListener The event listener.
+     */
     public void setWriterExitListener(OnThreadExitEventListener exitEventListener) {
         writer.setExitEventListener(exitEventListener);
     }
