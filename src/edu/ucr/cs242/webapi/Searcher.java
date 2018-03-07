@@ -4,9 +4,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -35,8 +33,34 @@ public abstract class Searcher {
                 .collect(Collectors.joining(", ", "(", ")"));
     }
 
+    private static String simpleHighlight(String value, String keyword) {
+        List<String> keywordList = Arrays.stream(keyword.split(" "))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                // Guarantee keywords are in lowercase
+                .map(String::toLowerCase)
+                .collect(Collectors.toList());
+
+        // Idea comes from https://stackoverflow.com/a/12026782
+        StringBuilder sbValue = new StringBuilder(value);
+        StringBuilder sbValueLower = new StringBuilder(value.toLowerCase());
+        keywordList.forEach(s -> {
+            int idx = 0;
+
+            while ((idx = sbValueLower.indexOf(s, idx)) != -1) {
+                sbValue.insert(idx, "<b>");
+                sbValue.insert(idx + "<b>".length() + s.length(), "</b>");
+                sbValueLower.replace(idx, idx + s.length(), "<b>" + s + "</b>");
+                idx += s.length() + "<b></b>".length();
+            }
+        });
+
+        return sbValue.toString();
+    }
+
     protected List<RelatedPage> fetchRelatedPages(List<String> titles, String keyword, String category) {
-        List<RelatedPage> pages = new ArrayList<>();
+        // Keep the scored order from Lucene
+        Map<String, RelatedPage> pages = new HashMap<>();
 
         int fetchCount = 0;
         while (fetchCount < titles.size()) {
@@ -51,11 +75,14 @@ public abstract class Searcher {
                 try (ResultSet result = statement.executeQuery()) {
                     while (result.next()) {
                         String title = result.getString("title");
-                        String content = result.getString("content").substring(0, 10);
-                        List<String> categories = Arrays.asList(result.getString("categories").split(Pattern.quote("|")));
+                        String content = contentFragmentHighlight(result.getString("content"), keyword);
+                        List<String> categories =
+                                Arrays.stream(result.getString("categories").split(Pattern.quote("|")))
+                                .map(s -> simpleHighlight(s, keyword))
+                                .collect(Collectors.toList());
                         String lastMod = result.getString("lastModify");
 
-                        pages.add(new RelatedPage(title, content, categories, lastMod));
+                        pages.put(title, new RelatedPage(simpleHighlight(title, keyword), content, categories, lastMod));
                         ++localCount;
                     }
                 }
@@ -67,7 +94,7 @@ public abstract class Searcher {
             }
         }
 
-        return pages;
+        return titles.stream().map(pages::get).collect(Collectors.toList());
     }
 
     public final JSONObject search(String query) {
@@ -81,6 +108,10 @@ public abstract class Searcher {
             keyword = query;
             category = "";
         }
+
+        // Convert to lower case, since both Lucene and our algorithm is indexed in lower case.
+        keyword = keyword.toLowerCase();
+        category = category.toLowerCase();
 
         SearchResult result = searchInternal(keyword, category);
         JSONObject response = new JSONObject().put("hits", result.getNumOfHits());
@@ -100,4 +131,5 @@ public abstract class Searcher {
     }
 
     protected abstract SearchResult searchInternal(String keyword, String category);
+    protected abstract String contentFragmentHighlight(String content, String keyword);
 }

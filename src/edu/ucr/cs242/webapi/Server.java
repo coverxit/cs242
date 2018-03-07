@@ -17,6 +17,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -98,7 +100,11 @@ public class Server {
                                 searcher = null;
                             }
 
-                            writeSuccess(httpExchange, searcher.search(keyword));
+                            LocalDateTime start = LocalDateTime.now();
+                            JSONObject searchResult = searcher.search(keyword);
+                            LocalDateTime end = LocalDateTime.now();
+
+                            writeSuccess(httpExchange, searchResult.put("elapsedTime", Duration.between(start, end).toMillis()));
                         } catch (SQLException e) {
                             System.out.println("Server throws an SQLException: " + e.getMessage());
                         }
