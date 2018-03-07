@@ -4,8 +4,10 @@ import java.io.BufferedOutputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
+import java.sql.*;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 public class Utility {
     public static void waitThreads(Thread[] threads) {
@@ -47,5 +49,32 @@ public class Utility {
         }
 
         return true;
+    }
+
+    public static Optional<Connection> getConnection(String jdbcUrl) throws ClassNotFoundException {
+        final String SQL_COUNT = "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'pages'";
+        Connection dbConnection = null;
+
+        Class.forName("org.sqlite.JDBC");
+        try {
+            dbConnection = DriverManager.getConnection(jdbcUrl);
+            Statement query = dbConnection.createStatement();
+            ResultSet result = query.executeQuery(SQL_COUNT);
+
+            result.next();
+            int count = result.getInt(1);
+            result.close();
+            query.close();
+
+            if (count > 0) {
+                return Optional.of(dbConnection);
+            } else {
+                dbConnection.close();
+                return Optional.empty();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return Optional.empty();
+        }
     }
 }

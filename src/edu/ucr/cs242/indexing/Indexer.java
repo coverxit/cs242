@@ -59,7 +59,6 @@ public class Indexer {
 
             result.next();
             numOfPages = result.getInt(1);
-
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -142,33 +141,6 @@ public class Indexer {
         System.out.println();
     }
 
-    private static Optional<Connection> getConnection(String jdbcUrl) throws ClassNotFoundException {
-        final String SQL_COUNT = "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'pages'";
-        Connection dbConnection = null;
-
-        Class.forName("org.sqlite.JDBC");
-        try {
-            dbConnection = DriverManager.getConnection(jdbcUrl);
-            Statement query = dbConnection.createStatement();
-            ResultSet result = query.executeQuery(SQL_COUNT);
-
-            result.next();
-            int count = result.getInt(1);
-            result.close();
-            query.close();
-
-            if (count > 0) {
-                return Optional.of(dbConnection);
-            } else {
-                dbConnection.close();
-                return Optional.empty();
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return Optional.empty();
-        }
-    }
-
     public static void main(String args[]) throws SQLException, ClassNotFoundException {
         final int NUMBER_OF_THREADS = 10;
 
@@ -217,7 +189,7 @@ public class Indexer {
             try {
                 int numOfThreads = Integer.parseInt(cmd.getOptionValue("threads", String.valueOf(NUMBER_OF_THREADS)));
 
-                Optional<Connection> dbConnection = getConnection(argList.get(0));
+                Optional<Connection> dbConnection = Utility.getConnection(argList.get(0));
                 if (!dbConnection.isPresent()) {
                     printMessage("invalid JDBC url");
                     printUsage();
