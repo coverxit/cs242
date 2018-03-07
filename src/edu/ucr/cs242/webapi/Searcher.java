@@ -89,9 +89,9 @@ public abstract class Searcher {
         result.getRelatedPages().forEach(p -> {
             JSONObject obj = new JSONObject();
             obj.put("title", p.getTitle());
-            //obj.put("snippet", p.getSnippet());
-            //obj.put("categories", new JSONArray(p.getCategories()));
-            //obj.put("lastModify", p.getLastModify());
+            obj.put("snippet", p.getSnippet());
+            obj.put("categories", new JSONArray(p.getCategories()));
+            obj.put("lastModify", p.getLastModify());
             array.put(obj);
         });
         response.put("pages", array);

@@ -11,6 +11,7 @@ import org.apache.lucene.store.FSDirectory;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -30,7 +31,7 @@ public class LuceneSearcher extends Searcher {
     }
 
     // In PhraseQuery, order matters.
-    private PhraseQuery buildPhraseQuery(String field, String keyword, int slop) {
+    private BoostQuery buildPhraseQuery(String field, String keyword, int slop, float boost) {
         PhraseQuery.Builder builder = new PhraseQuery.Builder();
         builder.setSlop(slop);
         // Split terms by space
@@ -38,17 +39,17 @@ public class LuceneSearcher extends Searcher {
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .forEach(s -> builder.add(new Term(field, s)));
-        return builder.build();
+        return new BoostQuery(builder.build(), boost);
     }
 
-    private BooleanQuery buildKeywordQuery(String field, String keyword, BooleanClause.Occur occur) {
+    private BoostQuery buildKeywordQuery(String field, String keyword, BooleanClause.Occur occur, float boost) {
         BooleanQuery.Builder builder = new BooleanQuery.Builder();
         // Split terms by space
         Arrays.stream(keyword.split(" "))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .forEach(s -> builder.add(new TermQuery(new Term(field, s)), occur));
-        return builder.build();
+        return new BoostQuery(builder.build(), boost);
     }
 
     @Override
@@ -64,24 +65,29 @@ public class LuceneSearcher extends Searcher {
             BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
 
             Query titleQuery = new BooleanQuery.Builder()
-                    .add(new BoostQuery(new BooleanQuery.Builder()
-                            .add(buildKeywordQuery("title", keyword, BooleanClause.Occur.MUST), BooleanClause.Occur.SHOULD)
-                            .add(buildPhraseQuery("title", keyword, 0), BooleanClause.Occur.SHOULD)
-                            .build(), 2.0f), BooleanClause.Occur.SHOULD)
-                    .add(new BoostQuery(new BooleanQuery.Builder()
-                            .add(buildPhraseQuery("title", keyword, 0), BooleanClause.Occur.MUST_NOT)
-                            .add(buildKeywordQuery("title", keyword, BooleanClause.Occur.SHOULD), BooleanClause.Occur.MUST)
-                            .build(), 0.1f), BooleanClause.Occur.SHOULD)
+                    .add(buildPhraseQuery("title", keyword, 0, 20.0f), BooleanClause.Occur.SHOULD)
+                    .add(buildKeywordQuery("title", keyword, BooleanClause.Occur.MUST, 5.0f), BooleanClause.Occur.SHOULD)
+                    .add(new BooleanQuery.Builder()
+                            .add(buildKeywordQuery("title", keyword, BooleanClause.Occur.SHOULD, 1.0f), BooleanClause.Occur.MUST)
+                            .add(buildPhraseQuery("title", keyword, 0, 1.0f), BooleanClause.Occur.MUST_NOT)
+                            .build(), BooleanClause.Occur.SHOULD)
                     .build();
             queryBuilder.add(titleQuery, BooleanClause.Occur.MUST);
 
-            queryBuilder.add(new BoostQuery(buildKeywordQuery("content", keyword, BooleanClause.Occur.SHOULD), 0.1f), BooleanClause.Occur.MUST);
+            Query contentQuery = new BooleanQuery.Builder()
+                    .add(buildPhraseQuery("content", keyword, 0, 2.0f), BooleanClause.Occur.SHOULD)
+                    .add(buildKeywordQuery("content", keyword, BooleanClause.Occur.MUST, 1.05f), BooleanClause.Occur.SHOULD)
+                    .add(new BooleanQuery.Builder()
+                            .add(buildKeywordQuery("content", keyword, BooleanClause.Occur.SHOULD, 1.0f), BooleanClause.Occur.MUST)
+                            .add(buildPhraseQuery("content", keyword, 0, 1.0f), BooleanClause.Occur.MUST_NOT)
+                            .build(), BooleanClause.Occur.SHOULD)
+                    .build();
+            queryBuilder.add(new BoostQuery(contentQuery, 0.5f), BooleanClause.Occur.MUST);
+
             if (!category.isEmpty()) {
                 // Category must be exact match
-                queryBuilder.add(buildPhraseQuery("categories", category, 0), BooleanClause.Occur.MUST);
+                queryBuilder.add(buildPhraseQuery("categories", category, 0, 20.f), BooleanClause.Occur.MUST);
             }
-
-            System.out.println(queryBuilder.build().toString());
 
             // Only get the top 1000 docs
             TopDocs topDocs = searcher.search(queryBuilder.build(), 1000);
