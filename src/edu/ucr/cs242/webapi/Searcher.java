@@ -40,7 +40,7 @@ public abstract class Searcher {
                 .collect(Collectors.joining(", ", "(", ")"));
     }
 
-    private static String fullTextHighlight(String value, String keyword) {
+    private static String fullTextHighlight(String text, String keyword) {
         List<String> keywordList = Arrays.stream(keyword.split(" "))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
@@ -49,28 +49,28 @@ public abstract class Searcher {
                 .collect(Collectors.toList());
 
         // Idea comes from https://stackoverflow.com/a/12026782
-        StringBuilder sbValue = new StringBuilder(value);
-        StringBuilder sbValueLower = new StringBuilder(value.toLowerCase());
+        StringBuilder sbText = new StringBuilder(text);
+        StringBuilder sbTextLower = new StringBuilder(text.toLowerCase());
         keywordList.forEach(s -> {
             int idx = 0;
 
-            while ((idx = sbValueLower.indexOf(s, idx)) != -1) {
-                sbValue.insert(idx, "<b>");
-                sbValue.insert(idx + "<b>".length() + s.length(), "</b>");
-                sbValueLower.replace(idx, idx + s.length(), "<b>" + s + "</b>");
+            while ((idx = sbTextLower.indexOf(s, idx)) != -1) {
+                sbText.insert(idx, "<b>");
+                sbText.insert(idx + "<b>".length() + s.length(), "</b>");
+                sbTextLower.replace(idx, idx + s.length(), "<b>" + s + "</b>");
                 idx += s.length() + "<b></b>".length();
             }
         });
 
-        return sbValue.toString();
+        return sbText.toString();
     }
 
-    private static String fragmentHighlight(String value, String keyword) {
+    private static String fragmentHighlight(String text, String keyword) {
         try {
             Query query = new QueryParser("", new StandardAnalyzer()).parse(keyword);
-            TokenStream tokenStream = new StandardAnalyzer().tokenStream("", value);
+            TokenStream tokenStream = new StandardAnalyzer().tokenStream("", text);
             Highlighter highlighter = new Highlighter(new SimpleHTMLFormatter(), new QueryScorer(query));
-            TextFragment[] fragments = highlighter.getBestTextFragments(tokenStream, value, false, 2);
+            TextFragment[] fragments = highlighter.getBestTextFragments(tokenStream, text, false, 2);
 
             return Arrays.stream(fragments).filter(Objects::nonNull)
                     .map(TextFragment::toString)
@@ -78,7 +78,7 @@ public abstract class Searcher {
                     .map(s -> s.replaceAll("\\r\\n|\\r|\\n", ""))
                     .collect(Collectors.joining(" ... "));
         } catch (ParseException | InvalidTokenOffsetsException | IOException e) {
-            return value;
+            return text;
         }
     }
 
