@@ -4,4 +4,4 @@ out/
 *.iml
 *.db
 **/META-INF/*
-
+**/lucene/*
