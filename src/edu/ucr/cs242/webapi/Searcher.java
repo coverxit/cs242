@@ -70,12 +70,12 @@ public abstract class Searcher {
             Query query = new QueryParser("", new StandardAnalyzer()).parse(keyword);
             TokenStream tokenStream = new StandardAnalyzer().tokenStream("", text);
             Highlighter highlighter = new Highlighter(new SimpleHTMLFormatter(), new QueryScorer(query));
-            TextFragment[] fragments = highlighter.getBestTextFragments(tokenStream, text, false, 2);
+            TextFragment[] fragments = highlighter.getBestTextFragments(tokenStream, text, false, 3);
 
             return Arrays.stream(fragments).filter(Objects::nonNull)
                     .map(TextFragment::toString)
-                    // Remove all newlines
-                    .map(s -> s.replaceAll("\\r\\n|\\r|\\n", ""))
+                    // Replace all newlines with space
+                    .map(s -> s.replaceAll("\\r\\n|\\r|\\n", " "))
                     .collect(Collectors.joining(" ... "));
         } catch (ParseException | InvalidTokenOffsetsException | IOException e) {
             return text;
