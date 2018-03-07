@@ -34,7 +34,7 @@ public class Server {
         }
 
         private void writeResponse(HttpExchange httpExchange, int httpStatusCode, JSONObject jsonObject) throws IOException {
-            byte bytes[] = jsonObject.toString().getBytes();
+            byte bytes[] = jsonObject.toString().getBytes("utf-8");
             httpExchange.sendResponseHeaders(httpStatusCode, bytes.length);
             OutputStream os = httpExchange.getResponseBody();
             os.write(bytes);
@@ -54,6 +54,7 @@ public class Server {
         @Override
         public void handle(HttpExchange httpExchange) throws IOException {
             String rawQuery = httpExchange.getRequestURI().getRawQuery();
+            httpExchange.getResponseHeaders().set("Content-Type", "application/json");
 
             if (rawQuery == null) {
                 writeFailure(httpExchange, "Empty request");

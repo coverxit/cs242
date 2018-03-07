@@ -79,10 +79,4 @@ public class Utility {
             return Optional.empty();
         }
     }
-
-    public static String buildBatchSelectPagesSQL(int numOfTitles) {
-        final String baseSQL = "SELECT title, content, categories, lastModify FROM pages WHERE title IN ";
-        return baseSQL + IntStream.range(0, numOfTitles).mapToObj(i -> "?")
-                .collect(Collectors.joining(", ", "(", ")"));
-    }
 }

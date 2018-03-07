@@ -1,20 +1,19 @@
 package edu.ucr.cs242.webapi;
 
-import edu.ucr.cs242.Utility;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
+import org.apache.lucene.search.spans.SpanNearQuery;
+import org.apache.lucene.search.spans.SpanTermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.sql.*;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class LuceneSearcher extends Searcher {
@@ -42,44 +41,14 @@ public class LuceneSearcher extends Searcher {
         return builder.build();
     }
 
-    private List<RelatedPage> fetchRelatedPages(IndexSearcher searcher, ScoreDoc[] scoreDocs, String category) {
-        List<RelatedPage> pages = new ArrayList<>();
-
-        List<String> titles = Arrays.stream(scoreDocs).map(sd -> {
-            try { return searcher.doc(sd.doc); }
-            catch (IOException e) { return null; }
-        }).filter(Objects::nonNull).map(d -> d.get("title")).collect(Collectors.toList());
-
-        int fetchCount = 0;
-        while (fetchCount < titles.size()) {
-            int localCount = 0;
-
-            int batchSize = Math.min(titles.size() - fetchCount, BATCH_READ_COUNT);
-            try (PreparedStatement statement = dbConnection.prepareStatement(Utility.buildBatchSelectPagesSQL(batchSize))) {
-                for (int i = 1; i <= batchSize; i++) {
-                    statement.setString(i, titles.get(fetchCount + i - 1));
-                }
-
-                try (ResultSet result = statement.executeQuery()) {
-                    while (result.next()) {
-                        String title = result.getString("title");
-                        String content = result.getString("content").substring(0, 10);
-                        List<String> categories = Arrays.asList(result.getString("categories").split(Pattern.quote("|")));
-                        String lastMod = result.getString("lastModify");
-
-                        pages.add(new RelatedPage(title, content, categories, lastMod));
-                        ++localCount;
-                    }
-                }
-
-                fetchCount += localCount;
-            } catch (SQLException e) {
-                System.out.println("LuceneSearcher throws an SQLException.");
-                e.printStackTrace();
-            }
-        }
-
-        return pages;
+    private BooleanQuery buildKeywordQuery(String field, String keyword) {
+        BooleanQuery.Builder builder = new BooleanQuery.Builder();
+        // Split terms by space
+        Arrays.stream(keyword.split(" "))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .forEach(s -> builder.add(new TermQuery(new Term(field, s)), BooleanClause.Occur.SHOULD));
+        return builder.build();
     }
 
     @Override
@@ -94,19 +63,28 @@ public class LuceneSearcher extends Searcher {
             IndexSearcher searcher = new IndexSearcher(reader);
             BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
 
-            // Matches in title have a boost of 2
-            // Slop of 10 should be fine, for getting additional (lower score) results
-            queryBuilder.add(new BoostQuery(buildPhraseQuery("title", keyword, 10), 2), BooleanClause.Occur.SHOULD);
-            queryBuilder.add(buildPhraseQuery("content", keyword, 10), BooleanClause.Occur.SHOULD);
+            Query titleQuery = new BooleanQuery.Builder()
+                    .add(buildKeywordQuery("title", keyword), BooleanClause.Occur.MUST)
+                    .add(buildPhraseQuery("title", keyword, 0), BooleanClause.Occur.SHOULD)
+                    .build();
+            queryBuilder.add(titleQuery, BooleanClause.Occur.MUST);
+
+            queryBuilder.add(new BoostQuery(buildKeywordQuery("content", keyword), 0.1f), BooleanClause.Occur.MUST);
             if (!category.isEmpty()) {
                 // Category must be exact match
                 queryBuilder.add(buildPhraseQuery("categories", category, 0), BooleanClause.Occur.MUST);
             }
 
+            System.out.println(queryBuilder.build().toString());
+
             // Only get the top 1000 docs
             TopDocs topDocs = searcher.search(queryBuilder.build(), 1000);
             long hits = topDocs.totalHits;
-            List<RelatedPage> pages = fetchRelatedPages(searcher, topDocs.scoreDocs, category);
+            List<String> titles = Arrays.stream(topDocs.scoreDocs).map(sd -> {
+                try { return searcher.doc(sd.doc); }
+                catch (IOException e) { return null; }
+            }).filter(Objects::nonNull).map(d -> d.get("title")).collect(Collectors.toList());
+            List<RelatedPage> pages = fetchRelatedPages(titles, keyword, category);
 
             reader.close();
             directory.close();
