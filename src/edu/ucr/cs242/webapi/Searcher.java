@@ -1,8 +1,15 @@
 package edu.ucr.cs242.webapi;
 
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.queryparser.classic.ParseException;
+import org.apache.lucene.queryparser.classic.QueryParser;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.highlight.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.sql.*;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -33,7 +40,7 @@ public abstract class Searcher {
                 .collect(Collectors.joining(", ", "(", ")"));
     }
 
-    private static String simpleHighlight(String value, String keyword) {
+    private static String fullTextHighlight(String value, String keyword) {
         List<String> keywordList = Arrays.stream(keyword.split(" "))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
@@ -58,6 +65,23 @@ public abstract class Searcher {
         return sbValue.toString();
     }
 
+    private static String fragmentHighlight(String value, String keyword) {
+        try {
+            Query query = new QueryParser("", new StandardAnalyzer()).parse(keyword);
+            TokenStream tokenStream = new StandardAnalyzer().tokenStream("", value);
+            Highlighter highlighter = new Highlighter(new SimpleHTMLFormatter(), new QueryScorer(query));
+            TextFragment[] fragments = highlighter.getBestTextFragments(tokenStream, value, false, 2);
+
+            return Arrays.stream(fragments).filter(Objects::nonNull)
+                    .map(TextFragment::toString)
+                    // Remove all newlines
+                    .map(s -> s.replaceAll("\\r\\n|\\r|\\n", ""))
+                    .collect(Collectors.joining(" ... "));
+        } catch (ParseException | InvalidTokenOffsetsException | IOException e) {
+            return value;
+        }
+    }
+
     protected List<RelatedPage> fetchRelatedPages(List<String> titles, String keyword, String category) {
         // Keep the scored order from Lucene
         Map<String, RelatedPage> pages = new HashMap<>();
@@ -75,14 +99,14 @@ public abstract class Searcher {
                 try (ResultSet result = statement.executeQuery()) {
                     while (result.next()) {
                         String title = result.getString("title");
-                        String content = contentFragmentHighlight(result.getString("content"), keyword);
+                        String content = fragmentHighlight(result.getString("content"), keyword);
                         List<String> categories =
                                 Arrays.stream(result.getString("categories").split(Pattern.quote("|")))
-                                .map(s -> simpleHighlight(s, keyword))
+                                .map(s -> fullTextHighlight(s, keyword))
                                 .collect(Collectors.toList());
                         String lastMod = result.getString("lastModify");
 
-                        pages.put(title, new RelatedPage(simpleHighlight(title, keyword), content, categories, lastMod));
+                        pages.put(title, new RelatedPage(fullTextHighlight(title, keyword), content, categories, lastMod));
                         ++localCount;
                     }
                 }
@@ -131,5 +155,4 @@ public abstract class Searcher {
     }
 
     protected abstract SearchResult searchInternal(String keyword, String category);
-    protected abstract String contentFragmentHighlight(String content, String keyword);
 }

@@ -3,15 +3,12 @@ package edu.ucr.cs242.webapi;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
-import org.apache.lucene.search.spans.SpanNearQuery;
-import org.apache.lucene.search.spans.SpanTermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.sql.*;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -54,10 +51,6 @@ public class LuceneSearcher extends Searcher {
 
     @Override
     protected SearchResult searchInternal(String keyword, String category) {
-        // Lucene is by default indexed in lower case.
-        keyword = keyword.toLowerCase();
-        category = category.toLowerCase();
-
         try {
             Directory directory = FSDirectory.open(indexPath);
             DirectoryReader reader = DirectoryReader.open(directory);
