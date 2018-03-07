@@ -102,7 +102,7 @@ public abstract class Searcher {
                         String content = fragmentHighlight(result.getString("content"), keyword);
                         List<String> categories =
                                 Arrays.stream(result.getString("categories").split(Pattern.quote("|")))
-                                .map(s -> fullTextHighlight(s, keyword))
+                                .map(s -> fullTextHighlight(s, category))
                                 .collect(Collectors.toList());
                         String lastMod = result.getString("lastModify");
 
