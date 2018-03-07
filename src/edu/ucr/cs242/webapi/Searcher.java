@@ -1,17 +1,11 @@
 package edu.ucr.cs242.webapi;
 
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.queryparser.classic.ParseException;
-import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.highlight.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.sql.*;
 import java.util.*;
+import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -65,24 +59,8 @@ public abstract class Searcher {
         return sbText.toString();
     }
 
-    private static String fragmentHighlight(String text, String keyword) {
-        try {
-            Query query = new QueryParser("", new StandardAnalyzer()).parse(keyword);
-            TokenStream tokenStream = new StandardAnalyzer().tokenStream("", text);
-            Highlighter highlighter = new Highlighter(new SimpleHTMLFormatter(), new QueryScorer(query));
-            TextFragment[] fragments = highlighter.getBestTextFragments(tokenStream, text, false, 3);
-
-            return Arrays.stream(fragments).filter(Objects::nonNull)
-                    .map(TextFragment::toString)
-                    // Replace all newlines with space
-                    .map(s -> s.replaceAll("\\r\\n|\\r|\\n", " "))
-                    .collect(Collectors.joining(" ... "));
-        } catch (ParseException | InvalidTokenOffsetsException | IOException e) {
-            return text;
-        }
-    }
-
-    protected List<RelatedPage> fetchRelatedPages(List<String> titles, String keyword, String category) {
+    protected List<RelatedPage> fetchRelatedPages(List<String> titles, String keyword, String category,
+                                                  BiFunction<String, String, String> fragmentHighlight) {
         // Keep the scored order from Lucene
         Map<String, RelatedPage> pages = new HashMap<>();
 
@@ -99,7 +77,7 @@ public abstract class Searcher {
                 try (ResultSet result = statement.executeQuery()) {
                     while (result.next()) {
                         String title = result.getString("title");
-                        String content = fragmentHighlight(result.getString("content"), keyword);
+                        String content = fragmentHighlight.apply(result.getString("content"), keyword);
                         List<String> categories =
                                 Arrays.stream(result.getString("categories").split(Pattern.quote("|")))
                                 .map(s -> fullTextHighlight(s, category))

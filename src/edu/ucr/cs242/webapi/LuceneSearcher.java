@@ -1,8 +1,13 @@
 package edu.ucr.cs242.webapi;
 
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.queryparser.classic.ParseException;
+import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.*;
+import org.apache.lucene.search.highlight.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
@@ -49,6 +54,23 @@ public class LuceneSearcher extends Searcher {
         return new BoostQuery(builder.build(), boost);
     }
 
+    private static String fragmentHighlight(String text, String keyword) {
+        try {
+            Query query = new QueryParser("", new StandardAnalyzer()).parse(keyword);
+            TokenStream tokenStream = new StandardAnalyzer().tokenStream("", text);
+            Highlighter highlighter = new Highlighter(new SimpleHTMLFormatter(), new QueryScorer(query));
+            TextFragment[] fragments = highlighter.getBestTextFragments(tokenStream, text, false, 3);
+
+            return Arrays.stream(fragments).filter(Objects::nonNull)
+                    .map(TextFragment::toString)
+                    // Replace all newlines with space
+                    .map(s -> s.replaceAll("\\r\\n|\\r|\\n", " "))
+                    .collect(Collectors.joining(" ... "));
+        } catch (ParseException | InvalidTokenOffsetsException | IOException e) {
+            return text;
+        }
+    }
+
     @Override
     protected SearchResult searchInternal(String keyword, String category) {
         try {
@@ -89,7 +111,7 @@ public class LuceneSearcher extends Searcher {
                 try { return searcher.doc(sd.doc); }
                 catch (IOException e) { return null; }
             }).filter(Objects::nonNull).map(d -> d.get("title")).collect(Collectors.toList());
-            List<RelatedPage> pages = fetchRelatedPages(titles, keyword, category);
+            List<RelatedPage> pages = fetchRelatedPages(titles, keyword, category, LuceneSearcher::fragmentHighlight);
 
             reader.close();
             directory.close();
