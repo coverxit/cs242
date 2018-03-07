@@ -18,10 +18,6 @@ public class Launcher {
                 new Subroutine("indexer",
                         "edu.ucr.cs242.indexing.Indexer",
                         "execute the Lucene indexer"));
-        subroutines.put("mapreduce",
-                new Subroutine("mapreduce",
-                        "edu.ucr.cs242.mapreduce.MapReducer",
-                        "execute the MapReduce indexer"));
         subroutines.put("webapi",
                 new Subroutine("webapi",
                         "edu.ucr.cs242.webapi.WebAPI",
