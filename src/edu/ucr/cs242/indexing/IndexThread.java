@@ -30,7 +30,7 @@ public class IndexThread extends Thread {
     private final IndexWriter indexWriter;
 
     /**
-     * Consturct an indexing thread with given settings.
+     * Construct an indexing thread with given settings.
      * @param indexer        The associated indexer.
      * @param threadId       The associated thread id.
      * @param pageStartIndex The page offset (in the database) to start indexing.

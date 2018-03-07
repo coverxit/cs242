@@ -8,6 +8,8 @@ import java.sql.*;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class Utility {
     public static void waitThreads(Thread[] threads) {
@@ -76,5 +78,11 @@ public class Utility {
             e.printStackTrace();
             return Optional.empty();
         }
+    }
+
+    public static String buildBatchSelectPagesSQL(int numOfTitles) {
+        final String baseSQL = "SELECT title, content, categories, lastModify FROM pages WHERE title IN ";
+        return baseSQL + IntStream.range(0, numOfTitles).mapToObj(i -> "?")
+                .collect(Collectors.joining(", ", "(", ")"));
     }
 }
