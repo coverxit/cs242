@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class Server {
+public class WebAPI {
     private final int port;
     private final String jdbcUrl;
     private final Path luceneIndexPath;
@@ -106,7 +106,7 @@ public class Server {
 
                             writeSuccess(httpExchange, searchResult.put("elapsedTime", Duration.between(start, end).toMillis()));
                         } catch (SQLException e) {
-                            System.out.println("Server throws an SQLException: " + e.getMessage());
+                            System.out.println("WebAPI throws an SQLException: " + e.getMessage());
                         }
                     }
                 }
@@ -120,7 +120,7 @@ public class Server {
      * @param jdbcUrl         The JDBC url to the database.
      * @param luceneIndexPath The directory to the Lucene index.
      */
-    public Server(int port, String jdbcUrl, Path luceneIndexPath) {
+    public WebAPI(int port, String jdbcUrl, Path luceneIndexPath) {
         this.port = port;
         this.jdbcUrl = jdbcUrl;
         this.luceneIndexPath = luceneIndexPath;
@@ -136,30 +136,30 @@ public class Server {
             System.out.println("RESTful API server started (listening on " + port + ").");
             System.out.println("Press Ctrl+C to terminate.");
         } catch (IOException e) {
-            System.out.println("Server throws an IOException: " + e.getMessage());
+            System.out.println("WebAPI throws an IOException: " + e.getMessage());
         }
 
         // Handle Ctrl+C
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("Stopping server...");
             httpServer.stop(0);
-            System.out.println("Server stopped.");
+            System.out.println("WebAPI stopped.");
         }));
     }
 
     private static void printMessage(String message) {
-        System.out.println("server: " + message);
+        System.out.println("webapi: " + message);
     }
 
     private static void printUsage() {
-        System.out.println("usage: server [options] <jdbc-url> <lucene-index-path>");
+        System.out.println("usage: webapi [options] <jdbc-url> <lucene-index-path>");
         System.out.println("use -h for a list of possible options");
         System.exit(1);
     }
 
     private static void printHelp(Options options) {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp("server [options] <jdbc-url> <lucene-index-path>", options);
+        formatter.printHelp("webapi [options] <jdbc-url> <lucene-index-path>", options);
         System.out.println();
     }
 
@@ -211,7 +211,7 @@ public class Server {
                     }
 
                     dbConnection.get().close();
-                    new Server(port, jdbcUrl, luceneIndexPath).start();
+                    new WebAPI(port, jdbcUrl, luceneIndexPath).start();
 
                 }
             } catch (NumberFormatException e) {

@@ -3,10 +3,11 @@ package edu.ucr.cs242;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class Launcher {
-    private static Map<String, Subroutine> subroutines = new HashMap<>();
+    private static Map<String, Subroutine> subroutines = new LinkedHashMap<>();
 
     static {
         subroutines.put("crawler",
@@ -17,13 +18,13 @@ public class Launcher {
                 new Subroutine("indexer",
                         "edu.ucr.cs242.indexing.Indexer",
                         "execute the Lucene indexer"));
-        subroutines.put("mapreducer",
+        subroutines.put("mapreduce",
                 new Subroutine("mapreduce",
                         "edu.ucr.cs242.mapreduce.MapReducer",
                         "execute the MapReduce indexer"));
         subroutines.put("webapi",
                 new Subroutine("webapi",
-                        "edu.ucr.cs242.webapi.Server",
+                        "edu.ucr.cs242.webapi.WebAPI",
                         "execute the RESTful API server"));
     }
 
