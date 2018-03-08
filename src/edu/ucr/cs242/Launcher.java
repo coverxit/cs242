@@ -15,12 +15,16 @@ public class Launcher {
                         "execute the Wikipedia crawler"));
         subroutines.put("indexer",
                 new Subroutine("indexer",
-                        "edu.ucr.cs242.indexing.Indexer",
+                        "edu.ucr.cs242.indexing.MapReduce",
                         "execute the Lucene indexer"));
         subroutines.put("exporter",
                 new Subroutine("exporter",
                         "edu.ucr.cs242.mapreduce.Exporter",
                         "export the data in SQLite into JSON file"));
+        subroutines.put("mapreduce",
+                new Subroutine("mapreduce",
+                        "edu.ucr.cs242.mapreduce.MapReduce",
+                        "execute the MapReduce indexer"));
         subroutines.put("webapi",
                 new Subroutine("webapi",
                         "edu.ucr.cs242.webapi.WebAPI",
