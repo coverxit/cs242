@@ -3,5 +3,6 @@ out/
 .idea/
 *.iml
 *.db
+*.json
 **/META-INF/*
 **/lucene/*
