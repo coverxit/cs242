@@ -35,8 +35,8 @@ public class Exporter {
 
     /**
      * Construct an Exporter with given settings.
-     * @param dbConnection    The active database connection.
-     * @param jsonOutputPath The directory to output the Lucene index.
+     * @param dbConnection   The active database connection.
+     * @param jsonOutputPath The file name to output JSON format data.
      */
     public Exporter(Connection dbConnection, Path jsonOutputPath) {
         this.dbConnection = dbConnection;
@@ -53,7 +53,7 @@ public class Exporter {
     public void start() {
         LocalDateTime startAt = LocalDateTime.now();
         System.out.println("Exporter started at " + startAt.toLocalTime() + ". " +
-                "Pages to index: " + numOfPages + ".");
+                "Pages to export: " + numOfPages + ".");
 
         try {
             int writtenCount = 0;
@@ -89,7 +89,7 @@ public class Exporter {
 
                     writtenCount += localCount;
                     if (writtenCount == numOfPages || writtenCount % 1000 == 0) {
-                        System.out.format("%sIndexer has indexed %d pages, %.2f%% completed. Elapsed time: %s.%n",
+                        System.out.format("%sExporter has exported %d pages, %.2f%% completed. Elapsed time: %s.%n",
                                 writtenCount == numOfPages ? "Summary: " : "",
                                 writtenCount, writtenCount * 100.0f / numOfPages, Utility.elapsedTime(startAt, LocalDateTime.now()));
                     }
