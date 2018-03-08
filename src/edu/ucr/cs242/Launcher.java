@@ -2,7 +2,6 @@ package edu.ucr.cs242;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -18,6 +17,10 @@ public class Launcher {
                 new Subroutine("indexer",
                         "edu.ucr.cs242.indexing.Indexer",
                         "execute the Lucene indexer"));
+        subroutines.put("exporter",
+                new Subroutine("exporter",
+                        "edu.ucr.cs242.mapreduce.Exporter",
+                        "export the data in SQLite into JSON file"));
         subroutines.put("webapi",
                 new Subroutine("webapi",
                         "edu.ucr.cs242.webapi.WebAPI",

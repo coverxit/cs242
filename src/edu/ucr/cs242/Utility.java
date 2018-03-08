@@ -79,4 +79,20 @@ public class Utility {
             return Optional.empty();
         }
     }
+
+    public static int fetchPageCount(Connection dbConnection) {
+        final String SQL_COUNT = "SELECT COUNT(*) FROM pages";
+        int numOfPages = -1;
+
+        try (Statement query = dbConnection.createStatement();
+             ResultSet result = query.executeQuery(SQL_COUNT)) {
+
+            result.next();
+            numOfPages = result.getInt(1);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return numOfPages;
+    }
 }

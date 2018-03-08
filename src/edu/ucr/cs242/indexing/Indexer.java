@@ -42,28 +42,12 @@ public class Indexer {
         this.dbConnection = dbConnection;
         this.indexOutputPath = indexOutputPath;
 
-        numOfPages = fetchPageCount();
+        numOfPages = Utility.fetchPageCount(dbConnection);
         // Check number of pages we have.
         if (numOfPages <= 0) {
             System.out.println("Indexer cannot find any pages to index. Exiting...");
             System.exit(numOfPages);
         }
-    }
-
-    private int fetchPageCount() {
-        final String SQL_COUNT = "SELECT COUNT(*) FROM pages";
-        int numOfPages = -1;
-
-        try (Statement query = dbConnection.createStatement();
-             ResultSet result = query.executeQuery(SQL_COUNT)) {
-
-            result.next();
-            numOfPages = result.getInt(1);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return numOfPages;
     }
 
     private void startThreads(IndexWriter indexWriter) {
