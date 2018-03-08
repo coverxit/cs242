@@ -6,8 +6,8 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.hadoop.mapreduce.lib.output.LazyOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.mapreduce.Job;
 import org.json.JSONArray;
@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-class IndexMapper extends Mapper<Object, Text, Text, Text> {
+class Phase1Mapper extends Mapper<Object, Text, Text, Text> {
     private final List<String> stopWords = Arrays.asList(
             "a", "an", "and", "are", "as", "at", "be", "but", "by",
             "for", "if", "in", "into", "is", "it",
@@ -98,7 +98,7 @@ class IndexMapper extends Mapper<Object, Text, Text, Text> {
     }
 }
 
-class IndexReducer extends Reducer<Text, Text, Text, Text> {
+class Phase1Reducer extends Reducer<Text, Text, Text, Text> {
     @Override
     protected void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
         String[] keySet = key.toString().split(Pattern.quote("|"));
@@ -116,6 +116,24 @@ class IndexReducer extends Reducer<Text, Text, Text, Text> {
     }
 }
 
+class Phase2Mapper extends Mapper<Text, Text, Text, Text> {
+    @Override
+    protected void map(Text key, Text value, Context context) throws IOException, InterruptedException {
+        context.write(key, value);
+    }
+}
+
+class Phase2Reducer extends Reducer<Text, Text, Text, Text> {
+    @Override
+    protected void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+        context.write(key, new Text(
+                new JSONArray(StreamSupport.stream(values.spliterator(), false)
+                        .map(Text::toString).map(JSONObject::new)
+                        .collect(Collectors.toList())).toString()
+                ));
+    }
+}
+
 public class MapReduce {
     public static void main(String[] args) throws Exception {
         if (args.length != 2) {
@@ -124,19 +142,44 @@ public class MapReduce {
             System.out.println("MapReduce started at " + LocalDateTime.now().toLocalTime() + ". ");
 
             Configuration conf = new Configuration();
-            Job job = Job.getInstance(conf, "MapReduceIndexer");
-            job.setJarByClass(MapReduce.class);
+            Path outputPath = new Path(args[1]);
 
-            job.setMapperClass(IndexMapper.class);
-            job.setReducerClass(IndexReducer.class);
+            // Phase 1, collect keywords' inverted index per document.
+            Job phase1 = Job.getInstance(conf, "MapReduceIndexer Phase 1");
+            phase1.setJarByClass(MapReduce.class);
 
-            job.setOutputKeyClass(Text.class);
-            job.setOutputValueClass(Text.class);
+            phase1.setMapperClass(Phase1Mapper.class);
+            phase1.setReducerClass(Phase1Reducer.class);
 
-            LazyOutputFormat.setOutputFormatClass(job, TextOutputFormat.class);
-            FileInputFormat.addInputPath(job, new Path(args[0]));
-            FileOutputFormat.setOutputPath(job, new Path(args[1]));
-            System.exit(job.waitForCompletion(true) ? 0 : 1);
+            phase1.setOutputKeyClass(Text.class);
+            phase1.setOutputValueClass(Text.class);
+            phase1.setOutputFormatClass(TextOutputFormat.class);
+
+            FileInputFormat.addInputPath(phase1, new Path(args[0]));
+            FileOutputFormat.setOutputPath(phase1, new Path(outputPath, "phase1"));
+
+            if (!phase1.waitForCompletion(true)) {
+                System.exit(1);
+            }
+
+            // Phase 2, reduce to <keyword, index[]>
+            Job phase2 = Job.getInstance(conf, "MapReduceIndexer Phase 2");
+            phase2.setJarByClass(MapReduce.class);
+            phase2.setInputFormatClass(KeyValueTextInputFormat.class);
+
+            phase2.setMapperClass(Phase2Mapper.class);
+            phase2.setReducerClass(Phase2Reducer.class);
+
+            phase2.setOutputKeyClass(Text.class);
+            phase2.setOutputValueClass(Text.class);
+            phase2.setOutputFormatClass(TextOutputFormat.class);
+
+            FileInputFormat.addInputPath(phase2, new Path(outputPath, "phase1"));
+            FileOutputFormat.setOutputPath(phase2, new Path(outputPath, "phase2"));
+
+            if (!phase2.waitForCompletion(true)) {
+                System.exit(1);
+            }
         }
     }
 }
