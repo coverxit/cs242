@@ -4,8 +4,6 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.queryparser.classic.ParseException;
-import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.*;
 import org.apache.lucene.search.highlight.*;
 import org.apache.lucene.store.Directory;
@@ -34,7 +32,7 @@ public class LuceneSearcher extends Searcher {
     }
 
     // In PhraseQuery, order matters.
-    private BoostQuery buildPhraseQuery(String field, String keyword, int slop, float boost) {
+    private static BoostQuery buildPhraseQuery(String field, String keyword, int slop, float boost) {
         PhraseQuery.Builder builder = new PhraseQuery.Builder();
         builder.setSlop(slop);
         // Split terms by space
@@ -45,7 +43,7 @@ public class LuceneSearcher extends Searcher {
         return new BoostQuery(builder.build(), boost);
     }
 
-    private BoostQuery buildKeywordQuery(String field, String keyword, BooleanClause.Occur occur, float boost) {
+    private static BoostQuery buildKeywordQuery(String field, String keyword, BooleanClause.Occur occur, float boost) {
         BooleanQuery.Builder builder = new BooleanQuery.Builder();
         // Split terms by space
         Arrays.stream(keyword.split(" "))
@@ -57,17 +55,17 @@ public class LuceneSearcher extends Searcher {
 
     private static String fragmentHighlight(String text, String keyword) {
         try {
-            Query query = new QueryParser("", new StandardAnalyzer()).parse(keyword);
+            Query query = buildKeywordQuery("", keyword, BooleanClause.Occur.SHOULD, 1.0f);
             TokenStream tokenStream = new StandardAnalyzer().tokenStream("", text);
             Highlighter highlighter = new Highlighter(new SimpleHTMLFormatter(), new QueryScorer(query));
-            TextFragment[] fragments = highlighter.getBestTextFragments(tokenStream, text, false, 4);
+            TextFragment[] fragments = highlighter.getBestTextFragments(tokenStream, text, false, 5);
 
             return Arrays.stream(fragments).filter(Objects::nonNull)
                     .map(TextFragment::toString)
                     // Replace all newlines with space
                     .map(s -> s.replaceAll("\\r\\n|\\r|\\n", " "))
                     .collect(Collectors.joining(" ... ", "... ", " ..."));
-        } catch (ParseException | InvalidTokenOffsetsException | IOException e) {
+        } catch (InvalidTokenOffsetsException | IOException e) {
             return text;
         }
     }
