@@ -24,12 +24,11 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 class IndexMapper extends Mapper<Object, Text, Text, Text> {
-    private final SnowballStemmer stemmer = new englishStemmer();
-
     private void mapInvertedIndex(Map<String, List<Integer>> frequency,
                                   Map<String, List<List<Integer>>> position,
                                   int fieldCount, int fieldId, String value) {
         StringTokenizer tokenizer = new StringTokenizer(value);
+        SnowballStemmer stemmer = new englishStemmer();
 
         int tokenCount = 0;
         while (tokenizer.hasMoreTokens()) {
@@ -42,12 +41,12 @@ class IndexMapper extends Mapper<Object, Text, Text, Text> {
             // We only index alphanumeric and non-empty words
             if (Pattern.matches("^[\\p{Alnum}]+$f", token)) {
                 if (!Utility.isStopWord(token)) {
-                    if (!frequency.containsKey(token)) {
-                        // Stemming through Snowball
-                        stemmer.setCurrent(token);
-                        stemmer.stem();
-                        token = stemmer.getCurrent();
+                    // Stemming through Snowball
+                    stemmer.setCurrent(token);
+                    stemmer.stem();
+                    token = stemmer.getCurrent();
 
+                    if (!frequency.containsKey(token)) {
                         frequency.put(token, new ArrayList<>(Collections.nCopies(fieldCount, 0)));
                         position.put(token, Stream.generate(ArrayList<Integer>::new).limit(fieldCount).collect(Collectors.toList()));
                     }
