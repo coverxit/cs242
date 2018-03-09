@@ -6,3 +6,4 @@ out/
 *.json
 **/META-INF/*
 **/lucene/*
+**/json-output/*

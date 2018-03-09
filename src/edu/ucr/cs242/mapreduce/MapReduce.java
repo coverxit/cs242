@@ -64,6 +64,7 @@ class IndexMapper extends Mapper<Object, Text, Text, Text> {
         try {
             JSONObject json = new JSONObject(value.toString());
 
+            int id = json.getInt("id");
             // We index in lowercase
             String title = json.getString("title").toLowerCase();
             String content = json.getString("content").toLowerCase();
@@ -87,7 +88,7 @@ class IndexMapper extends Mapper<Object, Text, Text, Text> {
                 data.put("p", position.get(entry.getKey()));
 
                 JSONObject item = new JSONObject();
-                item.put(title, data);
+                item.put(String.valueOf(id), data);
 
                 context.write(new Text(entry.getKey()), new Text(item.toString()));
             }

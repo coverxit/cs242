@@ -30,7 +30,7 @@ public class Exporter {
     public static final String SQL_QUERY = "SELECT title, content, categories FROM pages LIMIT ? OFFSET ?";
 
     private final Connection dbConnection;
-    private final Path jsonOutputPath;
+    private final String jsonOutputPath;
     private final int numOfPages;
 
     /**
@@ -38,7 +38,7 @@ public class Exporter {
      * @param dbConnection   The active database connection.
      * @param jsonOutputPath The file name to output JSON format data.
      */
-    public Exporter(Connection dbConnection, Path jsonOutputPath) {
+    public Exporter(Connection dbConnection, String jsonOutputPath) {
         this.dbConnection = dbConnection;
         this.jsonOutputPath = jsonOutputPath;
 
@@ -57,11 +57,10 @@ public class Exporter {
 
         try {
             int writtenCount = 0;
-            FileOutputStream outputStream = new FileOutputStream(jsonOutputPath.toString());
+            FileOutputStream dataOutput = new FileOutputStream(Paths.get(jsonOutputPath, "data.json").toString());
+            FileOutputStream indexOutput = new FileOutputStream(Paths.get(jsonOutputPath, "index.json").toString());
 
             while (writtenCount < numOfPages) {
-                int localCount = 0;
-
                 try (PreparedStatement statement = dbConnection.prepareStatement(SQL_QUERY)) {
                     statement.setInt(1, Math.min(BATCH_READ_COUNT, numOfPages - writtenCount));
                     statement.setInt(2, writtenCount);
@@ -75,19 +74,27 @@ public class Exporter {
                                             .collect(Collectors.toList());
 
                             JSONObject object = new JSONObject()
+                                    .put("id", writtenCount)
                                     .put("title", title)
                                     .put("content", content)
                                     .put("categories", categories);
 
-                            outputStream.write(object.toString().getBytes("utf-8"));
-                            outputStream.write('\n');
-                            outputStream.flush();
+                            dataOutput.write(object.toString().getBytes("utf-8"));
+                            dataOutput.write('\n');
+                            dataOutput.flush();
 
-                            ++localCount;
+                            object = new JSONObject()
+                                    .put("id", writtenCount)
+                                    .put("title", title);
+
+                            indexOutput.write(object.toString().getBytes("utf-8"));
+                            indexOutput.write('\n');
+                            indexOutput.flush();
+
+                            ++writtenCount;
                         }
                     }
 
-                    writtenCount += localCount;
                     if (writtenCount == numOfPages || writtenCount % 1000 == 0) {
                         System.out.format("%sExporter has exported %d pages, %.2f%% completed. Elapsed time: %s.%n",
                                 writtenCount == numOfPages ? "Summary: " : "",
@@ -99,7 +106,8 @@ public class Exporter {
                 }
             }
 
-            outputStream.close();
+            dataOutput.close();
+            indexOutput.close();
         } catch (IOException e) {
             System.out.println("Exporter throws an IOException: " + e.getMessage());
         }
@@ -164,12 +172,12 @@ public class Exporter {
                     printUsage();
                 } else {
                     Path jsonOutputPath = Paths.get(argList.get(1));
-                    if (Files.exists(jsonOutputPath) && Files.isDirectory(jsonOutputPath)) {
-                        printMessage("invalid JSON output path (it is a directory)");
+                    if (!Files.exists(jsonOutputPath) || !Files.isDirectory(jsonOutputPath)) {
+                        printMessage("invalid index output path (not exist or not directory)");
                         printUsage();
                     }
 
-                    new Exporter(dbConnection.get(), jsonOutputPath).start();
+                    new Exporter(dbConnection.get(), jsonOutputPath.toString()).start();
                     dbConnection.get().close();
                 }
             } catch (NumberFormatException e) {
