@@ -18,7 +18,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-public class Exporter {
+public class SQLExporter {
     /**
      * The number of records to be batch-read per SQL transaction.
      */
@@ -34,25 +34,25 @@ public class Exporter {
     private final int numOfPages;
 
     /**
-     * Construct an Exporter with given settings.
+     * Construct an SQLExporter with given settings.
      * @param dbConnection   The active database connection.
      * @param jsonOutputPath The file name to output JSON format data.
      */
-    public Exporter(Connection dbConnection, String jsonOutputPath) {
+    public SQLExporter(Connection dbConnection, String jsonOutputPath) {
         this.dbConnection = dbConnection;
         this.jsonOutputPath = jsonOutputPath;
 
         numOfPages = Utility.fetchPageCount(dbConnection);
         // Check number of pages we have.
         if (numOfPages <= 0) {
-            System.out.println("Exporter cannot find any pages to export. Exiting...");
+            System.out.println("SQLExporter cannot find any pages to export. Exiting...");
             System.exit(numOfPages);
         }
     }
 
     public void start() {
         LocalDateTime startAt = LocalDateTime.now();
-        System.out.println("Exporter started at " + startAt.toLocalTime() + ". " +
+        System.out.println("SQLExporter started at " + startAt.toLocalTime() + ". " +
                 "Pages to export: " + numOfPages + ".");
 
         try {
@@ -101,7 +101,7 @@ public class Exporter {
                                 writtenCount, writtenCount * 100.0f / numOfPages, Utility.elapsedTime(startAt, LocalDateTime.now()));
                     }
                 } catch (SQLException e) {
-                    System.out.println("Exporter throws an SQLException.");
+                    System.out.println("SQLExporter throws an SQLException.");
                     e.printStackTrace();
                 }
             }
@@ -109,7 +109,7 @@ public class Exporter {
             dataOutput.close();
             indexOutput.close();
         } catch (IOException e) {
-            System.out.println("Exporter throws an IOException: " + e.getMessage());
+            System.out.println("SQLExporter throws an IOException: " + e.getMessage());
         }
     }
 
@@ -177,7 +177,7 @@ public class Exporter {
                         printUsage();
                     }
 
-                    new Exporter(dbConnection.get(), jsonOutputPath.toString()).start();
+                    new SQLExporter(dbConnection.get(), jsonOutputPath.toString()).start();
                     dbConnection.get().close();
                 }
             } catch (NumberFormatException e) {

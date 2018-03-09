@@ -19,7 +19,7 @@ public class Launcher {
                         "execute the Lucene indexer"));
         subroutines.put("exporter",
                 new Subroutine("exporter",
-                        "edu.ucr.cs242.mapreduce.Exporter",
+                        "edu.ucr.cs242.mapreduce.SQLExporter",
                         "export the data in SQLite into JSON file"));
         subroutines.put("mapreduce",
                 new Subroutine("mapreduce",
