@@ -87,8 +87,8 @@ public class WebAPI {
                     writeFailure(httpExchange, "Parameter `keyword` missing.");
                 } else {
                     String method = urlQuery.get("method").toLowerCase();
-                    if (!method.equals("lucene") && !method.equals("mapreduce")) {
-                        writeFailure(httpExchange, "Invalid parameter `method`. Available methods are `lucene` and `mapreduce`.");
+                    if (!method.equals("lucene") && !method.equals("hadoop")) {
+                        writeFailure(httpExchange, "Invalid parameter `method`. Available methods are `lucene` and `hadoop`.");
                     } else {
                         String keyword = urlQuery.get("keyword");
 
