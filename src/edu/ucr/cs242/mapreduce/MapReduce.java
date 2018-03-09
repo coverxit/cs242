@@ -31,9 +31,7 @@ class IndexMapper extends Mapper<Object, Text, Text, Text> {
 
     private void mapInvertedIndex(Map<String, List<Integer>> frequency,
                                   Map<String, List<List<Integer>>> position,
-                                  int fieldCount, int fieldId, String value)
-            throws IOException, InterruptedException {
-
+                                  int fieldCount, int fieldId, String value) {
         StringTokenizer tokenizer = new StringTokenizer(value);
 
         int tokenCount = 0;
