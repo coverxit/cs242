@@ -102,8 +102,8 @@ public abstract class Searcher {
                 }
 
                 fetchCount += localCount;
-            } catch (SQLException e) {
-                System.out.println("Searcher::fetchRelatedPages throws an SQLException.");
+            } catch (Exception e) {
+                System.out.println("Searcher::fetchRelatedPages throws an Exception.");
                 e.printStackTrace();
             }
         }

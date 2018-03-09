@@ -128,8 +128,8 @@ public class LuceneSearcher extends Searcher {
             reader.close();
             directory.close();
             return new SearchResult(hits, pages);
-        } catch (IOException e) {
-            System.out.println("LuceneSearcher throws an IOException: " + e.getMessage());
+        } catch (Exception e) {
+            System.out.println("LuceneSearcher throws an Exception: " + e.getMessage());
             return null;
         }
     }
