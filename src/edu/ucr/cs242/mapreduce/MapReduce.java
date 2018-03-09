@@ -40,7 +40,7 @@ class IndexMapper extends Mapper<Object, Text, Text, Text> {
 
             // We only index alphanumeric and non-empty words
             if (Pattern.matches("^[\\p{Alnum}]+$f", token)) {
-                if (!Utility.isStopWord(token)) {
+                if (!Utility.STOP_WORDS.contains(token)) {
                     // Stemming through Snowball
                     stemmer.setCurrent(token);
                     stemmer.stem();
