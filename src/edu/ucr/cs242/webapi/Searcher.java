@@ -6,6 +6,7 @@ import org.json.JSONObject;
 import java.sql.*;
 import java.util.*;
 import java.util.function.BiFunction;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -49,21 +50,13 @@ public abstract class Searcher {
 
         String htmlBegin = "<" + htmlTag + ">", htmlEnd = "</" + htmlTag + ">";
 
-        // Idea comes from https://stackoverflow.com/a/12026782
-        StringBuilder sbText = new StringBuilder(text);
-        StringBuilder sbTextLower = new StringBuilder(text.toLowerCase());
-        keywordList.forEach(s -> {
-            int idx = 0;
-
-            while ((idx = sbTextLower.indexOf(s, idx)) != -1) {
-                sbText.insert(idx, htmlBegin);
-                sbText.insert(idx + htmlBegin.length() + s.length(), htmlEnd);
-                sbTextLower.replace(idx, idx + s.length(), htmlBegin + s + htmlEnd);
-                idx += s.length() + htmlBegin.length() + htmlEnd.length();
-            }
-        });
-
-        return sbText.toString();
+        for (String word : keywordList) {
+            Pattern pattern = Pattern.compile(Pattern.quote(word), Pattern.CASE_INSENSITIVE);
+            Matcher matcher = pattern.matcher(text);
+            text = matcher.replaceAll(htmlBegin + "$0" + htmlEnd);
+        }
+        
+        return text;
     }
 
     protected List<RelatedPage> fetchRelatedPages(List<String> titles, String keyword, String category,
