@@ -14,6 +14,7 @@ import org.apache.lucene.store.FSDirectory;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -59,13 +60,13 @@ public class LuceneSearcher extends Searcher {
             Query query = new QueryParser("", new StandardAnalyzer()).parse(keyword);
             TokenStream tokenStream = new StandardAnalyzer().tokenStream("", text);
             Highlighter highlighter = new Highlighter(new SimpleHTMLFormatter(), new QueryScorer(query));
-            TextFragment[] fragments = highlighter.getBestTextFragments(tokenStream, text, false, 3);
+            TextFragment[] fragments = highlighter.getBestTextFragments(tokenStream, text, false, 4);
 
             return Arrays.stream(fragments).filter(Objects::nonNull)
                     .map(TextFragment::toString)
                     // Replace all newlines with space
                     .map(s -> s.replaceAll("\\r\\n|\\r|\\n", " "))
-                    .collect(Collectors.joining(" ... "));
+                    .collect(Collectors.joining(" ... ", "... ", " ..."));
         } catch (ParseException | InvalidTokenOffsetsException | IOException e) {
             return text;
         }
@@ -100,18 +101,29 @@ public class LuceneSearcher extends Searcher {
             queryBuilder.add(new BoostQuery(contentQuery, 0.5f), BooleanClause.Occur.MUST);
 
             if (!category.isEmpty()) {
-                // Category must be exact match
-                queryBuilder.add(buildPhraseQuery("categories", category, 0, 20.f), BooleanClause.Occur.MUST);
+                Query categoryQuery = new BooleanQuery.Builder()
+                        .add(buildPhraseQuery("categories", category, 0, 20.0f), BooleanClause.Occur.SHOULD)
+                        .add(buildKeywordQuery("categories", category, BooleanClause.Occur.MUST, 5.0f), BooleanClause.Occur.SHOULD)
+                        .add(new BooleanQuery.Builder()
+                                .add(buildKeywordQuery("categories", category, BooleanClause.Occur.SHOULD, 1.0f), BooleanClause.Occur.MUST)
+                                .add(buildPhraseQuery("categories", category, 0, 1.0f), BooleanClause.Occur.MUST_NOT)
+                                .build(), BooleanClause.Occur.SHOULD)
+                        .build();
+                queryBuilder.add(categoryQuery, BooleanClause.Occur.MUST);
             }
 
             // Only get the top 1000 docs
             TopDocs topDocs = searcher.search(queryBuilder.build(), 1000);
             long hits = topDocs.totalHits;
-            List<String> titles = Arrays.stream(topDocs.scoreDocs).map(sd -> {
-                try { return searcher.doc(sd.doc); }
-                catch (IOException e) { return null; }
-            }).filter(Objects::nonNull).map(d -> d.get("title")).collect(Collectors.toList());
-            List<RelatedPage> pages = fetchRelatedPages(titles, keyword, category, LuceneSearcher::fragmentHighlight);
+
+            List<RelatedPage> pages = new ArrayList<>();
+            if (hits > 0) {
+                List<String> titles = Arrays.stream(topDocs.scoreDocs).map(sd -> {
+                    try { return searcher.doc(sd.doc); }
+                    catch (IOException e) { return null; }
+                }).filter(Objects::nonNull).map(d -> d.get("title")).collect(Collectors.toList());
+                pages = fetchRelatedPages(titles, keyword, category, LuceneSearcher::fragmentHighlight);
+            }
 
             reader.close();
             directory.close();

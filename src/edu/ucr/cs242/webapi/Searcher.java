@@ -85,11 +85,16 @@ public abstract class Searcher {
                         String content = fragmentHighlight.apply(result.getString("content"), keyword);
                         List<String> categories =
                                 Arrays.stream(result.getString("categories").split(Pattern.quote("|")))
-                                .map(s -> fullTextHighlight(s, category))
                                 .collect(Collectors.toList());
                         String lastMod = result.getString("lastModify");
 
-                        pages.put(title, new RelatedPage(fullTextHighlight(title, keyword), content, categories, lastMod));
+                        pages.put(title, new RelatedPage(
+                                fullTextHighlight(title, keyword),
+                                title,
+                                content,
+                                categories.stream().map(s -> fullTextHighlight(s, category)).collect(Collectors.toList()),
+                                categories,
+                                lastMod));
                         ++localCount;
                     }
                 }
@@ -124,24 +129,36 @@ public abstract class Searcher {
         JSONObject response = new JSONObject().put("hits", result.getNumOfHits());
 
         List<RelatedPage> pages = result.getRelatedPages();
-        int pageLimit = (int) Math.ceil(pages.size() * 1.0f / RESULT_PER_PAGE);
+        if (!pages.isEmpty()) {
+            int pageLimit = (int) Math.ceil(pages.size() * 1.0f / RESULT_PER_PAGE);
 
-        if (pageId < 0) {
-            pageId = 0;
-        } else if (pageId >= pageLimit) {
-            pageId = pageLimit - 1;
+            if (pageId < 0) {
+                pageId = 0;
+            } else if (pageId >= pageLimit) {
+                pageId = pageLimit - 1;
+            }
+
+            JSONArray array = new JSONArray();
+            pages.stream().skip(pageId * RESULT_PER_PAGE).limit(RESULT_PER_PAGE).forEach(p -> {
+                JSONObject obj = new JSONObject();
+                obj.put("title", p.getTitle());
+                obj.put("url", "https://en.wikipedia.org/wiki/" + p.getRawTitle().replaceAll(" ", "_"));
+                obj.put("snippet", p.getSnippet());
+                obj.put("categories",
+                        new JSONObject()
+                                .put("html", p.getCategories())
+                                .put("href", p.getRawCategories().stream()
+                                        .map(s -> "https://en.wikipedia.org/wiki/Category:" + s.replaceAll(" ", "_"))
+                                        .collect(Collectors.toList()))
+                );
+                obj.put("lastModify", p.getLastModify());
+                array.put(obj);
+            });
+
+            response.put("pages", array);
+            response.put("pageNo", pageId + 1);
+            response.put("totalPages", pageLimit);
         }
-
-        JSONArray array = new JSONArray();
-        pages.stream().skip(pageId * RESULT_PER_PAGE).limit(RESULT_PER_PAGE).forEach(p -> {
-            JSONObject obj = new JSONObject();
-            obj.put("title", p.getTitle());
-            obj.put("snippet", p.getSnippet());
-            obj.put("categories", new JSONArray(p.getCategories()));
-            obj.put("lastModify", p.getLastModify());
-            array.put(obj);
-        });
-        response.put("pages", array);
 
         return response;
     }

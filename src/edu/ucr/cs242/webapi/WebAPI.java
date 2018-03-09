@@ -100,17 +100,18 @@ public class WebAPI {
                                 searcher = null;
                             }
 
+                            // Paging
                             int page = 0;
                             if (urlQuery.containsKey("page")) {
                                 try {
                                     page = Integer.parseInt(urlQuery.get("page"));
                                 } catch (NumberFormatException e) {
-                                    page = 0;
+                                    page = 1;
                                 }
                             }
 
                             LocalDateTime start = LocalDateTime.now();
-                            JSONObject searchResult = searcher.search(keyword, page);
+                            JSONObject searchResult = searcher.search(keyword, page - 1);
                             LocalDateTime end = LocalDateTime.now();
 
                             writeSuccess(httpExchange, searchResult.put("elapsedTime", Duration.between(start, end).toMillis()));
