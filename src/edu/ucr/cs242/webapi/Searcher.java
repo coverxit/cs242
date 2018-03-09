@@ -39,13 +39,15 @@ public abstract class Searcher {
                 .collect(Collectors.joining(", ", "(", ")"));
     }
 
-    private static String fullTextHighlight(String text, String keyword) {
+    private static String fullTextHighlight(String text, String keyword, String htmlTag) {
         List<String> keywordList = Arrays.stream(keyword.split(" "))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 // Guarantee keywords are in lowercase
                 .map(String::toLowerCase)
                 .collect(Collectors.toList());
+
+        String htmlBegin = "<" + htmlTag + ">", htmlEnd = "</" + htmlTag + ">";
 
         // Idea comes from https://stackoverflow.com/a/12026782
         StringBuilder sbText = new StringBuilder(text);
@@ -54,10 +56,10 @@ public abstract class Searcher {
             int idx = 0;
 
             while ((idx = sbTextLower.indexOf(s, idx)) != -1) {
-                sbText.insert(idx, "<b>");
-                sbText.insert(idx + "<b>".length() + s.length(), "</b>");
-                sbTextLower.replace(idx, idx + s.length(), "<b>" + s + "</b>");
-                idx += s.length() + "<b></b>".length();
+                sbText.insert(idx, htmlBegin);
+                sbText.insert(idx + htmlBegin.length() + s.length(), htmlEnd);
+                sbTextLower.replace(idx, idx + s.length(), htmlBegin + s + htmlEnd);
+                idx += s.length() + htmlBegin.length() + htmlEnd.length();
             }
         });
 
@@ -89,10 +91,10 @@ public abstract class Searcher {
                         String lastMod = result.getString("lastModify");
 
                         pages.put(title, new RelatedPage(
-                                fullTextHighlight(title, keyword),
+                                fullTextHighlight(title, keyword, "span"),
                                 title,
                                 content,
-                                categories.stream().map(s -> fullTextHighlight(s, category)).collect(Collectors.toList()),
+                                categories.stream().map(s -> fullTextHighlight(s, category, "b")).collect(Collectors.toList()),
                                 categories,
                                 lastMod));
                         ++localCount;
