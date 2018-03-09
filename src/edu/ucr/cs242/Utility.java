@@ -7,6 +7,8 @@ import java.io.PrintStream;
 import java.sql.*;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -94,5 +96,22 @@ public class Utility {
         }
 
         return numOfPages;
+    }
+
+    public static boolean isStopWord(String word) {
+        final List<String> stopWords = Arrays.asList(
+                "i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself",
+                "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself",
+                "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "this", "that",
+                "these", "those", "am", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had",
+                "having", "do", "does", "did", "doing", "would", "should", "could", "ought", "cannot", "a", "an",
+                "the", "and", "but", "if", "or", "because", "as", "until", "while", "of", "at", "by", "for", "with",
+                "about", "against", "between", "into", "through", "during", "before", "after", "above", "below", "to",
+                "from", "up", "down", "in", "out", "on", "off", "over", "under", "again", "further", "then", "once",
+                "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few", "more", "most",
+                "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very"
+        );
+
+        return stopWords.contains(word);
     }
 }

@@ -1,5 +1,6 @@
 package edu.ucr.cs242.mapreduce;
 
+import edu.ucr.cs242.Utility;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
@@ -12,6 +13,8 @@ import org.apache.hadoop.mapreduce.Job;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.tartarus.snowball.SnowballStemmer;
+import org.tartarus.snowball.ext.englishStemmer;
 
 import java.io.IOException;
 import java.util.*;
@@ -21,13 +24,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 class IndexMapper extends Mapper<Object, Text, Text, Text> {
-    private final List<String> stopWords = Arrays.asList(
-            "a", "an", "and", "are", "as", "at", "be", "but", "by",
-            "for", "if", "in", "into", "is", "it",
-            "no", "not", "of", "on", "or", "such",
-            "that", "the", "their", "then", "there", "these",
-            "they", "this", "to", "was", "will", "with"
-    );
+    private final SnowballStemmer stemmer = new englishStemmer();
 
     private void mapInvertedIndex(Map<String, List<Integer>> frequency,
                                   Map<String, List<List<Integer>>> position,
@@ -43,9 +40,14 @@ class IndexMapper extends Mapper<Object, Text, Text, Text> {
                     .trim().toLowerCase();
 
             // We only index alphanumeric and non-empty words
-            if (Pattern.matches("^[\\p{Alnum}]+$", token)) {
-                if (!stopWords.contains(token)) {
+            if (Pattern.matches("^[\\p{Alnum}]+$f", token)) {
+                if (!Utility.isStopWord(token)) {
                     if (!frequency.containsKey(token)) {
+                        // Stemming through Snowball
+                        stemmer.setCurrent(token);
+                        stemmer.stem();
+                        token = stemmer.getCurrent();
+
                         frequency.put(token, new ArrayList<>(Collections.nCopies(fieldCount, 0)));
                         position.put(token, Stream.generate(ArrayList<Integer>::new).limit(fieldCount).collect(Collectors.toList()));
                     }
