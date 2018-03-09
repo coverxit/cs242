@@ -21,6 +21,11 @@ public abstract class Searcher {
      */
     private static final String CATEGORY_IDENTIFIER = "category:";
 
+    /**
+     * The number of search result shown in a page.
+     */
+    private static final int RESULT_PER_PAGE = 10;
+
     protected final Connection dbConnection;
 
     protected Searcher(String jdbcUrl) throws SQLException {
@@ -99,7 +104,7 @@ public abstract class Searcher {
         return titles.stream().map(pages::get).collect(Collectors.toList());
     }
 
-    public final JSONObject search(String query) {
+    public final JSONObject search(String query, int pageId) {
         String keyword, category;
 
         int pos = query.indexOf(CATEGORY_IDENTIFIER);
@@ -118,8 +123,17 @@ public abstract class Searcher {
         SearchResult result = searchInternal(keyword, category);
         JSONObject response = new JSONObject().put("hits", result.getNumOfHits());
 
+        List<RelatedPage> pages = result.getRelatedPages();
+        int pageLimit = (int) Math.ceil(pages.size() * 1.0f / RESULT_PER_PAGE);
+
+        if (pageId < 0) {
+            pageId = 0;
+        } else if (pageId >= pageLimit) {
+            pageId = pageLimit - 1;
+        }
+
         JSONArray array = new JSONArray();
-        result.getRelatedPages().forEach(p -> {
+        pages.stream().skip(pageId * RESULT_PER_PAGE).limit(RESULT_PER_PAGE).forEach(p -> {
             JSONObject obj = new JSONObject();
             obj.put("title", p.getTitle());
             obj.put("snippet", p.getSnippet());
