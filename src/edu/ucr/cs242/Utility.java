@@ -98,7 +98,7 @@ public class Utility {
         return numOfPages;
     }
 
-    public static final List<String> STOP_WORDS = Arrays.asList(
+    private static final List<String> STOP_WORDS = Arrays.asList(
             "i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself",
             "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself",
             "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "this", "that",
@@ -110,4 +110,8 @@ public class Utility {
             "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few", "more", "most",
             "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very"
     );
+
+    public static boolean isStopWord(String word) {
+        return STOP_WORDS.contains(word);
+    }
 }
