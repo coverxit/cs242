@@ -25,9 +25,9 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 class IndexWritable implements Writable {
-    int docId;
-    int[] frequency;
-    int[] position;
+    private int docId;
+    private int[] frequency;
+    private int[] position;
 
     public int getDocId() {
         return docId;
