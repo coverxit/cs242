@@ -27,7 +27,7 @@ public class SQLExporter {
     /**
      * The SQL query statement.
      */
-    public static final String SQL_QUERY = "SELECT title, content, categories FROM pages LIMIT ? OFFSET ?";
+    public static final String SQL_QUERY = "SELECT title, content, categories, outLinks FROM pages LIMIT ? OFFSET ?";
 
     private final Connection dbConnection;
     private final String jsonOutputPath;
@@ -55,10 +55,14 @@ public class SQLExporter {
         System.out.println("SQLExporter started at " + startAt.toLocalTime() + ". " +
                 "Pages to export: " + numOfPages + ".");
 
+        Map<String, Integer> titleToId = new HashMap<>();
+        Map<String, List<String>> outgoingLinks = new HashMap<>();
+
         try {
             int writtenCount = 0;
             FileOutputStream dataOutput = new FileOutputStream(Paths.get(jsonOutputPath, "data.json").toString());
             FileOutputStream indexOutput = new FileOutputStream(Paths.get(jsonOutputPath, "index.json").toString());
+            FileOutputStream linkOutput = new FileOutputStream(Paths.get(jsonOutputPath, "link.json").toString());
 
             while (writtenCount < numOfPages) {
                 try (PreparedStatement statement = dbConnection.prepareStatement(SQL_QUERY)) {
@@ -71,6 +75,9 @@ public class SQLExporter {
                             String content = result.getString("content");
                             List<String> categories =
                                     Arrays.stream(result.getString("categories").split(Pattern.quote("|")))
+                                            .collect(Collectors.toList());
+                            List<String> outLinks =
+                                    Arrays.stream(result.getString("outLinks").split(Pattern.quote("|")))
                                             .collect(Collectors.toList());
 
                             JSONObject object = new JSONObject()
@@ -91,6 +98,9 @@ public class SQLExporter {
                             indexOutput.write('\n');
                             indexOutput.flush();
 
+                            titleToId.put(title, writtenCount);
+                            outgoingLinks.put(title, outLinks);
+
                             ++writtenCount;
                         }
                     }
@@ -106,8 +116,34 @@ public class SQLExporter {
                 }
             }
 
+            writtenCount = 0;
+            for (Map.Entry<String, Integer> entry : titleToId.entrySet()) {
+                List<Integer> links = outgoingLinks.get(entry.getKey()).stream()
+                        .map(titleToId::get)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList());
+
+                if (!links.isEmpty()) {
+                    JSONObject object = new JSONObject()
+                            .put("id", entry.getValue())
+                            .put("links", links);
+
+                    linkOutput.write(object.toString().getBytes("utf-8"));
+                    linkOutput.write('\n');
+                    linkOutput.flush();
+                }
+
+                ++writtenCount;
+                if (writtenCount == numOfPages || writtenCount % 1000 == 0) {
+                    System.out.format("%sExporter has exported outgoing links of page %d, %.2f%% completed. Elapsed time: %s.%n",
+                            writtenCount == numOfPages ? "Summary: " : "",
+                            writtenCount, writtenCount * 100.0f / numOfPages, Utility.elapsedTime(startAt, LocalDateTime.now()));
+                }
+            }
+
             dataOutput.close();
             indexOutput.close();
+            linkOutput.close();
         } catch (IOException e) {
             System.out.println("SQLExporter throws an IOException: " + e.getMessage());
         }
