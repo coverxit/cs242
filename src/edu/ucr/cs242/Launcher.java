@@ -25,6 +25,10 @@ public class Launcher {
                 new Subroutine("mapreduce",
                         "edu.ucr.cs242.mapreduce.MapReduce",
                         "execute the MapReduce indexer"));
+        subroutines.put("importer",
+                new Subroutine("importer",
+                        "edu.ucr.cs242.mapreduce.NoSQLImporter",
+                        "import the hadoop output into NoSQL database"));
         subroutines.put("webapi",
                 new Subroutine("webapi",
                         "edu.ucr.cs242.webapi.WebAPI",

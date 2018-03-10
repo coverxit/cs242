@@ -14,6 +14,13 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class Utility {
+    public static void waitThread(Thread thread) {
+        if (thread != null) {
+            try { thread.join(); }
+            catch (InterruptedException e) { thread.interrupt(); }
+        }
+    }
+
     public static void waitThreads(Thread[] threads) {
         for (Thread thread : threads) {
             if (thread != null) {

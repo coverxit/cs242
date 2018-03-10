@@ -9,3 +9,4 @@ out/
 **/json-output/*
 **/hadoop-output/*
 **/mixer/*
+*hadoop-output*
