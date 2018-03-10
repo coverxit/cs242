@@ -127,7 +127,8 @@ public class LuceneSearcher extends Searcher {
             directory.close();
             return new SearchResult(hits, pages);
         } catch (Exception e) {
-            System.out.println("LuceneSearcher throws an Exception: " + e.getMessage());
+            System.out.println("LuceneSearcher throws an Exception.");
+            e.printStackTrace();
             return null;
         }
     }

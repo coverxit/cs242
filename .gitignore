@@ -5,9 +5,8 @@ out/
 *.db
 *.json
 **/META-INF/*
-**/lucene/*
-**/json-output/*
-**/hadoop-output/*
-**/mixer/*
-*hadoop-output*
-*mixer*
+/lucene/
+/json-output*/
+hadoop-output*
+/mixer/
+mixer.zip
