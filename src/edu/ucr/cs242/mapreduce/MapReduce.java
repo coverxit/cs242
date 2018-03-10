@@ -4,18 +4,19 @@ import edu.ucr.cs242.Utility;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
-import org.apache.hadoop.mapreduce.Job;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.tartarus.snowball.SnowballStemmer;
 import org.tartarus.snowball.ext.englishStemmer;
 
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -23,7 +24,81 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-class IndexMapper extends Mapper<Object, Text, Text, Text> {
+class IndexWritable implements Writable {
+    int docId;
+    int[] frequency;
+    int[] position;
+
+    public int getDocId() {
+        return docId;
+    }
+
+    public int[] getFrequency() {
+        return frequency;
+    }
+
+    public int[] getPosition() {
+        return position;
+    }
+
+    public IndexWritable() {
+        docId = -1;
+        frequency = null;
+        position = null;
+    }
+
+    public IndexWritable(int docId, int[] frequency, int[] position) {
+        this.docId = docId;
+        this.frequency = frequency;
+        this.position = position;
+    }
+
+    private int[] readIntArray(DataInput dataInput) throws IOException {
+        int length = dataInput.readInt();
+        int[] array = new int[length];
+
+        for (int i = 0; i < length; i++) {
+            array[i] = dataInput.readInt();
+        }
+        return array;
+    }
+
+    private void writeIntArray(DataOutput dataOutput, int[] array) throws IOException {
+        dataOutput.writeInt(array.length);
+        for (int v : array) {
+            dataOutput.writeInt(v);
+        }
+    }
+
+    @Override
+    public void readFields(DataInput dataInput) throws IOException {
+        docId = dataInput.readInt();
+        frequency = readIntArray(dataInput);
+        position = readIntArray(dataInput);
+    }
+
+    @Override
+    public void write(DataOutput dataOutput) throws IOException {
+        dataOutput.writeInt(this.docId);
+        writeIntArray(dataOutput, this.frequency);
+        writeIntArray(dataOutput, position);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(docId);
+        sb.append(Arrays.stream(frequency)
+                .mapToObj(String::valueOf)
+                .collect(Collectors.joining(",", ":", "|")));
+        sb.append(Arrays.stream(position)
+                .mapToObj(String::valueOf)
+                .collect(Collectors.joining(",")));
+        return sb.toString();
+    }
+}
+
+class IndexMapper extends Mapper<Object, Text, Text, IndexWritable> {
     private final SnowballStemmer stemmer = new englishStemmer();
 
     private void mapInvertedIndex(Map<String, List<Integer>> frequency,
@@ -85,14 +160,23 @@ class IndexMapper extends Mapper<Object, Text, Text, Text> {
             mapInvertedIndex(frequency, position, 3, 2, categories);
 
             for (Map.Entry<String, List<Integer>> entry : frequency.entrySet()) {
-                JSONObject data = new JSONObject();
-                data.put("f", entry.getValue());
-                data.put("p", position.get(entry.getKey()));
+                List<Integer> item = new ArrayList<>(Collections.singletonList(id));
 
-                JSONObject item = new JSONObject();
-                item.put(String.valueOf(id), data);
+                // Frequency
+                item.addAll(entry.getValue());
 
-                context.write(new Text(entry.getKey()), new Text(item.toString()));
+                // Position
+                item.addAll(position.get(entry.getKey()).stream()
+                        .flatMap(List::stream)
+                        .collect(Collectors.toList()));
+
+                context.write(
+                        new Text(entry.getKey()),
+                        new IndexWritable(id, entry.getValue().stream().mapToInt(i -> i).toArray(),
+                                position.get(entry.getKey()).stream()
+                                        .flatMap(List::stream)
+                                        .mapToInt(i -> i).toArray())
+                );
             }
         } catch (JSONException e) {
             // The last line of input file (the empty line), will trigger this exception.
@@ -105,13 +189,13 @@ class IndexMapper extends Mapper<Object, Text, Text, Text> {
     }
 }
 
-class IndexReducer extends Reducer<Text, Text, Text, Text> {
+class IndexReducer extends Reducer<Text, IndexWritable, Text, Text> {
     @Override
-    protected void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-        JSONArray json = new JSONArray(StreamSupport.stream(values.spliterator(), false)
-                .map(Text::toString).map(JSONObject::new).collect(Collectors.toList()));
+    protected void reduce(Text key, Iterable<IndexWritable> values, Context context) throws IOException, InterruptedException {
+        String value = StreamSupport.stream(values.spliterator(), false)
+                .map(IndexWritable::toString).collect(Collectors.joining(";"));
 
-        context.write(key, new Text(json.toString()));
+        context.write(key, new Text(value));
     }
 }
 
@@ -126,9 +210,11 @@ public class MapReduce {
             job.setMapperClass(IndexMapper.class);
             job.setReducerClass(IndexReducer.class);
 
+            job.setMapOutputKeyClass(Text.class);
+            job.setMapOutputValueClass(IndexWritable.class);
+
             job.setOutputKeyClass(Text.class);
             job.setOutputValueClass(Text.class);
-            job.setOutputFormatClass(TextOutputFormat.class);
 
             FileInputFormat.addInputPath(job, new Path(args[0]));
             FileOutputFormat.setOutputPath(job, new Path(args[1]));
