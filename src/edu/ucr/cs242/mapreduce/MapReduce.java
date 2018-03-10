@@ -4,7 +4,6 @@ import edu.ucr.cs242.Utility;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -15,88 +14,12 @@ import org.json.JSONObject;
 import org.tartarus.snowball.SnowballStemmer;
 import org.tartarus.snowball.ext.englishStemmer;
 
-import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-
-class IndexWritable implements Writable {
-    private int docId;
-    private int[] frequency;
-    private int[] position;
-
-    public int getDocId() {
-        return docId;
-    }
-
-    public int[] getFrequency() {
-        return frequency;
-    }
-
-    public int[] getPosition() {
-        return position;
-    }
-
-    public IndexWritable() {
-        docId = -1;
-        frequency = null;
-        position = null;
-    }
-
-    public IndexWritable(int docId, int[] frequency, int[] position) {
-        this.docId = docId;
-        this.frequency = frequency;
-        this.position = position;
-    }
-
-    private int[] readIntArray(DataInput dataInput) throws IOException {
-        int length = dataInput.readInt();
-        int[] array = new int[length];
-
-        for (int i = 0; i < length; i++) {
-            array[i] = dataInput.readInt();
-        }
-        return array;
-    }
-
-    private void writeIntArray(DataOutput dataOutput, int[] array) throws IOException {
-        dataOutput.writeInt(array.length);
-        for (int v : array) {
-            dataOutput.writeInt(v);
-        }
-    }
-
-    @Override
-    public void readFields(DataInput dataInput) throws IOException {
-        docId = dataInput.readInt();
-        frequency = readIntArray(dataInput);
-        position = readIntArray(dataInput);
-    }
-
-    @Override
-    public void write(DataOutput dataOutput) throws IOException {
-        dataOutput.writeInt(this.docId);
-        writeIntArray(dataOutput, this.frequency);
-        writeIntArray(dataOutput, position);
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append(docId);
-        sb.append(Arrays.stream(frequency)
-                .mapToObj(String::valueOf)
-                .collect(Collectors.joining(",", ":", "|")));
-        sb.append(Arrays.stream(position)
-                .mapToObj(String::valueOf)
-                .collect(Collectors.joining(",")));
-        return sb.toString();
-    }
-}
 
 class IndexMapper extends Mapper<Object, Text, Text, IndexWritable> {
     private final SnowballStemmer stemmer = new englishStemmer();

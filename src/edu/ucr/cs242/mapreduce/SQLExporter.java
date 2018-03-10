@@ -36,7 +36,7 @@ public class SQLExporter {
     /**
      * Construct an SQLExporter with given settings.
      * @param dbConnection   The active database connection.
-     * @param jsonOutputPath The file name to output JSON format data.
+     * @param jsonOutputPath The folder to output JSON format data.
      */
     public SQLExporter(Connection dbConnection, String jsonOutputPath) {
         this.dbConnection = dbConnection;
@@ -201,27 +201,20 @@ public class SQLExporter {
                 printUsage();
             }
 
-            try {
-                Optional<Connection> dbConnection = Utility.getConnection(argList.get(0));
-                if (!dbConnection.isPresent()) {
-                    printMessage("invalid JDBC url");
+            Optional<Connection> dbConnection = Utility.getConnection(argList.get(0));
+            if (!dbConnection.isPresent()) {
+                printMessage("invalid JDBC url");
+                printUsage();
+            } else {
+                Path jsonOutputPath = Paths.get(argList.get(1));
+                if (!Files.exists(jsonOutputPath) || !Files.isDirectory(jsonOutputPath)) {
+                    printMessage("invalid JSON output path (not exist or not directory)");
                     printUsage();
-                } else {
-                    Path jsonOutputPath = Paths.get(argList.get(1));
-                    if (!Files.exists(jsonOutputPath) || !Files.isDirectory(jsonOutputPath)) {
-                        printMessage("invalid index output path (not exist or not directory)");
-                        printUsage();
-                    }
-
-                    new SQLExporter(dbConnection.get(), jsonOutputPath.toString()).start();
-                    dbConnection.get().close();
                 }
-            } catch (NumberFormatException e) {
-                printMessage("invalid option(s)");
-                printHelp(options);
-                System.exit(1);
-            }
 
+                new SQLExporter(dbConnection.get(), jsonOutputPath.toString()).start();
+                dbConnection.get().close();
+            }
         } catch (ParseException e) {
             // Lower the first letter, which as default is an upper letter.
             printMessage(e.getMessage().substring(0, 1).toLowerCase() + e.getMessage().substring(1));
