@@ -43,8 +43,12 @@ public class NoSQLImporter {
             Thread dataThread = new DataImportThread(db, hadoopIndexOutputPath);
             dataThread.start();
 
+            DocumentLengthImportThread lengthThread = new DocumentLengthImportThread(db, jsonOutputPath);
+            lengthThread.start();
+
             Utility.waitThread(indexThread);
             Utility.waitThread(dataThread);
+            Utility.waitThread(lengthThread);
         }
     }
 

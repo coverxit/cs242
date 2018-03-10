@@ -8,5 +8,5 @@ out/
 /lucene/
 /json-output*/
 hadoop-output*
-/mixer/
+/mixer*/
 mixer.zip

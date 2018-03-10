@@ -15,8 +15,8 @@ public class IndexImportThread extends Thread {
 
     /**
      * Construct a index import thread, with given settings.
-     * @param database              The LevelDB object.
-     * @param jsonOutputPath        The folder to the JSON output.
+     * @param database       The LevelDB object.
+     * @param jsonOutputPath The folder to the JSON output.
      */
     public IndexImportThread(DB database, String jsonOutputPath) {
         this.database = database;
