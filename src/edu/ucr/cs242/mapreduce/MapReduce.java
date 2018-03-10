@@ -154,7 +154,6 @@ class IndexMapper extends Mapper<Object, Text, Text, IndexWritable> {
             // <key, <fieldId:[pos]>>
             Map<String, List<List<Integer>>> position = new HashMap<>();
 
-            // Use the first or two letters to save memory
             mapInvertedIndex(frequency, position, 3, 0, title);
             mapInvertedIndex(frequency, position, 3, 1, content);
             mapInvertedIndex(frequency, position, 3, 2, categories);
