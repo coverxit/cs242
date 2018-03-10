@@ -159,22 +159,10 @@ class IndexMapper extends Mapper<Object, Text, Text, IndexWritable> {
             mapInvertedIndex(frequency, position, 3, 2, categories);
 
             for (Map.Entry<String, List<Integer>> entry : frequency.entrySet()) {
-                List<Integer> item = new ArrayList<>(Collections.singletonList(id));
-
-                // Frequency
-                item.addAll(entry.getValue());
-
-                // Position
-                item.addAll(position.get(entry.getKey()).stream()
-                        .flatMap(List::stream)
-                        .collect(Collectors.toList()));
-
                 context.write(
                         new Text(entry.getKey()),
                         new IndexWritable(id, entry.getValue().stream().mapToInt(i -> i).toArray(),
-                                position.get(entry.getKey()).stream()
-                                        .flatMap(List::stream)
-                                        .mapToInt(i -> i).toArray())
+                                position.get(entry.getKey()).stream().flatMap(List::stream).mapToInt(i -> i).toArray())
                 );
             }
         } catch (JSONException e) {
