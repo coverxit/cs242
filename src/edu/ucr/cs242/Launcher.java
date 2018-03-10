@@ -19,7 +19,7 @@ public class Launcher {
                         "execute the Lucene indexer"));
         subroutines.put("exporter",
                 new Subroutine("exporter",
-                        "edu.ucr.cs242.mapreduce.SQLExporter",
+                        "edu.ucr.cs242.mapreduce.exporter.SQLExporter",
                         "export the data in SQLite into JSON file"));
         subroutines.put("mapreduce",
                 new Subroutine("mapreduce",
@@ -27,7 +27,7 @@ public class Launcher {
                         "execute the MapReduce indexer"));
         subroutines.put("importer",
                 new Subroutine("importer",
-                        "edu.ucr.cs242.mapreduce.NoSQLImporter",
+                        "edu.ucr.cs242.mapreduce.importer.NoSQLImporter",
                         "import the hadoop output into NoSQL database"));
         subroutines.put("webapi",
                 new Subroutine("webapi",

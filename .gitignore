@@ -10,3 +10,4 @@ out/
 **/hadoop-output/*
 **/mixer/*
 *hadoop-output*
+*mixer*

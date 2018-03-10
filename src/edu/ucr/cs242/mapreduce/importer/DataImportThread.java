@@ -1,4 +1,4 @@
-package edu.ucr.cs242.mapreduce;
+package edu.ucr.cs242.mapreduce.importer;
 
 import edu.ucr.cs242.Utility;
 import org.fusesource.leveldbjni.JniDBFactory;
