@@ -50,6 +50,16 @@ public class SQLExporter {
         }
     }
 
+    private void reportProgress(LocalDateTime startAt, int count, boolean links) {
+        if (count == numOfPages || count % 1000 == 0) {
+            System.out.format("%sSQLExporter has exported %d pages%s, %.2f%% completed. Elapsed time: %s.%n",
+                    count == numOfPages ? "Summary: " : "",
+                    count,
+                    links ? "' outgoing links" : "",
+                    count * 100.0f / numOfPages, Utility.elapsedTime(startAt, LocalDateTime.now()));
+        }
+    }
+
     public void start() {
         LocalDateTime startAt = LocalDateTime.now();
         System.out.println("SQLExporter started at " + startAt.toLocalTime() + ". " +
@@ -105,11 +115,7 @@ public class SQLExporter {
                         }
                     }
 
-                    if (writtenCount == numOfPages || writtenCount % 1000 == 0) {
-                        System.out.format("%sExporter has exported %d pages, %.2f%% completed. Elapsed time: %s.%n",
-                                writtenCount == numOfPages ? "Summary: " : "",
-                                writtenCount, writtenCount * 100.0f / numOfPages, Utility.elapsedTime(startAt, LocalDateTime.now()));
-                    }
+                    reportProgress(startAt, writtenCount, false);
                 } catch (SQLException e) {
                     System.out.println("SQLExporter throws an SQLException.");
                     e.printStackTrace();
@@ -134,11 +140,7 @@ public class SQLExporter {
                 }
 
                 ++writtenCount;
-                if (writtenCount == numOfPages || writtenCount % 1000 == 0) {
-                    System.out.format("%sExporter has exported outgoing links of page %d, %.2f%% completed. Elapsed time: %s.%n",
-                            writtenCount == numOfPages ? "Summary: " : "",
-                            writtenCount, writtenCount * 100.0f / numOfPages, Utility.elapsedTime(startAt, LocalDateTime.now()));
-                }
+                reportProgress(startAt, writtenCount, true);
             }
 
             dataOutput.close();
