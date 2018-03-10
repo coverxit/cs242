@@ -16,15 +16,18 @@ import java.nio.file.Paths;
 import java.util.List;
 
 public class NoSQLImporter {
+    private final String databasePath;
     private final String jsonOutputPath;
     private final String hadoopIndexOutputPath;
 
     /**
      * Construct an NoSQLImporter with given settings.
+     * @param databasePath          The path to LevelDB database.
      * @param jsonOutputPath        The folder to the JSON output.
      * @param hadoopIndexOutputPath The file name to the Hadoop's index output.
      */
-    public NoSQLImporter(String jsonOutputPath, String hadoopIndexOutputPath) {
+    public NoSQLImporter(String databasePath, String jsonOutputPath, String hadoopIndexOutputPath) {
+        this.databasePath = databasePath;
         this.jsonOutputPath = jsonOutputPath;
         this.hadoopIndexOutputPath = hadoopIndexOutputPath;
     }
@@ -33,10 +36,15 @@ public class NoSQLImporter {
         org.iq80.leveldb.Options options = new org.iq80.leveldb.Options();
         options.createIfMissing(true);
 
-        try (DB db = JniDBFactory.factory.open(new File("mixer"), options)) {
-            Thread indexImportThread = new IndexImportThread(db, jsonOutputPath, hadoopIndexOutputPath);
-            indexImportThread.start();
-            Utility.waitThread(indexImportThread);
+        try (DB db = JniDBFactory.factory.open(new File(databasePath), options)) {
+            Thread indexThread = new IndexImportThread(db, jsonOutputPath);
+            indexThread.start();
+
+            Thread dataThread = new DataImportThread(db, hadoopIndexOutputPath);
+            dataThread.start();
+
+            Utility.waitThread(indexThread);
+            Utility.waitThread(dataThread);
         }
     }
 
@@ -45,14 +53,14 @@ public class NoSQLImporter {
     }
 
     private static void printUsage() {
-        System.out.println("usage: importer [options] <exporter-json-output-path> <hadoop-index-output-path>");
+        System.out.println("usage: importer [options] <leveldb-path> <exporter-json-output-path> <hadoop-index-output-path>");
         System.out.println("use -h for a list of possible options");
         System.exit(1);
     }
 
     private static void printHelp(org.apache.commons.cli.Options options) {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp("importer [options] <exporter-json-output-path> <hadoop-index-output-path>", options);
+        formatter.printHelp("importer [options] <leveldb-path> <exporter-json-output-path> <hadoop-index-output-path>", options);
         System.out.println();
     }
 
@@ -77,11 +85,16 @@ public class NoSQLImporter {
             }
 
             if (argList.isEmpty()) {
-                printMessage("SQLExporter's JSON output path is not specified");
+                printMessage("LevelDB path is not specified");
                 printUsage();
             }
 
             if (argList.size() <= 1) {
+                printMessage("SQLExporter's JSON output path is not specified");
+                printUsage();
+            }
+
+            if (argList.size() <= 2) {
                 printMessage("Hadoop's index output path is not specified");
                 printUsage();
             }
@@ -92,19 +105,25 @@ public class NoSQLImporter {
                 printUsage();
             }
 
-            Path jsonOutputPath = Paths.get(argList.get(0));
+            Path databasePath = Paths.get(argList.get(0));
+            if (Files.exists(databasePath) &&  !Files.isDirectory(databasePath)) {
+                printMessage("invalid LevelDB path (not directory)");
+                printUsage();
+            }
+
+            Path jsonOutputPath = Paths.get(argList.get(1));
             if (!Files.exists(jsonOutputPath) || !Files.isDirectory(jsonOutputPath)) {
                 printMessage("invalid SQLExporter's JSON output path (not exist or not directory)");
                 printUsage();
             }
 
-            Path hadoopIndexOutputPath = Paths.get(argList.get(1));
+            Path hadoopIndexOutputPath = Paths.get(argList.get(2));
             if (!Files.exists(hadoopIndexOutputPath) || Files.isDirectory(hadoopIndexOutputPath)) {
-                printMessage("invalid Hadoop's index output path (not exist or is a directory)");
+                printMessage("invalid Hadoop's index output path (not exist or is directory)");
                 printUsage();
             }
 
-            new NoSQLImporter(jsonOutputPath.toString(), hadoopIndexOutputPath.toString()).start();
+            new NoSQLImporter(databasePath.toString(), jsonOutputPath.toString(), hadoopIndexOutputPath.toString()).start();
         } catch (ParseException e) {
             // Lower the first letter, which as default is an upper letter.
             printMessage(e.getMessage().substring(0, 1).toLowerCase() + e.getMessage().substring(1));
