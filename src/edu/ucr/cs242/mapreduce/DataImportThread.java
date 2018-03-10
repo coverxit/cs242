@@ -73,12 +73,17 @@ public class DataImportThread extends Thread {
 
             String dataLine;
             while ((dataLine = dataReader.readLine()) != null) {
-                processDataLine(dataLine);
+                try {
+                    processDataLine(dataLine);
 
-                ++indexedCount;
-                if (indexedCount % 1000 == 0) {
-                    System.out.format("DataImportThread has imported %d keywords. Elapsed time: %s.%n",
-                            indexedCount, Utility.elapsedTime(startAt, LocalDateTime.now()));
+                    ++indexedCount;
+                    if (indexedCount % 1000 == 0) {
+                        System.out.format("DataImportThread has imported %d keywords. Elapsed time: %s.%n",
+                                indexedCount, Utility.elapsedTime(startAt, LocalDateTime.now()));
+                    }
+                } catch (Exception e) {
+                    System.out.println("DataImportThread throws an Exception.");
+                    e.printStackTrace();
                 }
             }
 

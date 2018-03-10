@@ -35,16 +35,21 @@ public class IndexImportThread extends Thread {
 
             String indexLine;
             while ((indexLine = indexReader.readLine()) != null) {
-                JSONObject indexJson = new JSONObject(indexLine);
+                try {
+                    JSONObject indexJson = new JSONObject(indexLine);
 
-                // <docId,title>
-                database.put(JniDBFactory.bytes("__docId_" + indexJson.getInt("id")),
-                        JniDBFactory.bytes(indexJson.getString("title")));
+                    // <docId,title>
+                    database.put(JniDBFactory.bytes("__docId_" + indexJson.getInt("id")),
+                            JniDBFactory.bytes(indexJson.getString("title")));
 
-                ++indexedCount;
-                if (indexedCount % 1000 == 0) {
-                    System.out.format("IndexImportThread has imported %d pages. Elapsed time: %s.%n",
-                            indexedCount, Utility.elapsedTime(startAt, LocalDateTime.now()));
+                    ++indexedCount;
+                    if (indexedCount % 1000 == 0) {
+                        System.out.format("IndexImportThread has imported %d pages. Elapsed time: %s.%n",
+                                indexedCount, Utility.elapsedTime(startAt, LocalDateTime.now()));
+                    }
+                } catch (Exception e) {
+                    System.out.println("IndexImportThread throws an Exception.");
+                    e.printStackTrace();
                 }
             }
 
