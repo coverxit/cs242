@@ -9,7 +9,9 @@ import java.io.*;
 import java.math.BigInteger;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.StringTokenizer;
+import java.util.stream.Collectors;
 
 public class DocumentLengthImportThread extends Thread {
     private final DB database;
@@ -25,11 +27,11 @@ public class DocumentLengthImportThread extends Thread {
         this.jsonOutputPath = jsonOutputPath;
     }
 
-    private int putLength(JSONObject json, int fieldId, String fieldName) {
-        int length = new StringTokenizer(json.getString(fieldName)).countTokens();
+    private int putLength(int docId, int fieldId, String fieldName, String text) {
+        int length = new StringTokenizer(text).countTokens();
 
         // <docId, length>
-        database.put(JniDBFactory.bytes("__docLength_" + json.getInt("id") + "_" + fieldId),
+        database.put(JniDBFactory.bytes("__docLength_" + docId + "_" + fieldId),
                 JniDBFactory.bytes(String.valueOf(length)));
 
         return length;
@@ -53,9 +55,16 @@ public class DocumentLengthImportThread extends Thread {
                 try {
                     JSONObject dataJson = new JSONObject(dataLine);
 
-                    totalDocLength[0] = totalDocLength[0].add(BigInteger.valueOf(putLength(dataJson, 0, "title")));
-                    totalDocLength[1] = totalDocLength[1].add(BigInteger.valueOf(putLength(dataJson, 1, "content")));
-                    totalDocLength[2] = totalDocLength[2].add(BigInteger.valueOf(putLength(dataJson, 2, "categories")));
+                    int docId = dataJson.getInt("id");
+                    String title = dataJson.getString("title").toLowerCase();
+                    String content = dataJson.getString("content").toLowerCase();
+                    String categories = dataJson.getJSONArray("categories").toList().stream()
+                            .map(Objects::toString).map(String::toLowerCase)
+                            .collect(Collectors.joining(" "));
+
+                    totalDocLength[0] = totalDocLength[0].add(BigInteger.valueOf(putLength(docId, 0, "title", title)));
+                    totalDocLength[1] = totalDocLength[1].add(BigInteger.valueOf(putLength(docId, 1, "content", content)));
+                    totalDocLength[2] = totalDocLength[2].add(BigInteger.valueOf(putLength(docId, 2, "categories", categories)));
 
                     ++indexedCount;
                     if (indexedCount % 1000 == 0) {
