@@ -125,7 +125,7 @@ public class Utility {
         return STOP_WORDS.contains(word);
     }
 
-    public static List<String> split(String keyword) {
+    public static List<String> splitKeyword(String keyword) {
         // Split terms by space
         return Arrays.stream(keyword.split(" "))
                 .map(String::trim)

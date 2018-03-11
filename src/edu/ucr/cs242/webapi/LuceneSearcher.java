@@ -33,13 +33,13 @@ public class LuceneSearcher extends Searcher {
     private static BoostQuery buildPhraseQuery(String field, String keyword, int slop, float boost) {
         PhraseQuery.Builder builder = new PhraseQuery.Builder();
         builder.setSlop(slop);
-        Utility.split(keyword).forEach(s -> builder.add(new Term(field, s)));
+        Utility.splitKeyword(keyword).forEach(s -> builder.add(new Term(field, s)));
         return new BoostQuery(builder.build(), boost);
     }
 
     private static BoostQuery buildKeywordQuery(String field, String keyword, BooleanClause.Occur occur, float boost) {
         BooleanQuery.Builder builder = new BooleanQuery.Builder();
-        Utility.split(keyword).forEach(s -> builder.add(new TermQuery(new Term(field, s)), occur));
+        Utility.splitKeyword(keyword).forEach(s -> builder.add(new TermQuery(new Term(field, s)), occur));
         return new BoostQuery(builder.build(), boost);
     }
 
@@ -54,6 +54,8 @@ public class LuceneSearcher extends Searcher {
                     .map(TextFragment::toString)
                     // Replace all newlines with space
                     .map(s -> s.replaceAll("\\r\\n|\\r|\\n", " "))
+                    // Replace multiple spaces into one space
+                    .map(s -> s.replaceAll("[ ]+", " "))
                     .collect(Collectors.joining(" ... ", "... ", " ..."));
         } catch (InvalidTokenOffsetsException | IOException e) {
             return text;

@@ -12,7 +12,10 @@ import org.tartarus.snowball.ext.englishStemmer;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class MixerSearcher extends Searcher {
     private static final double k1 = 1.2;
@@ -42,7 +45,7 @@ public class MixerSearcher extends Searcher {
     }
 
     private List<String> getQueryTerms(String query) {
-        return Utility.split(query).stream()
+        return Utility.splitKeyword(query).stream()
                 .filter(s -> !Utility.isStopWord(s))
                 .map(s -> {
                     stemmer.setCurrent(s);
@@ -228,7 +231,39 @@ public class MixerSearcher extends Searcher {
     }
 
     private static String fragmentHighlight(String text, String keyword) {
-        return keyword;
+        String[] sentences = text.split("[,;.\n]");
+        int[] sentenceCount = new int[sentences.length];
+
+        List<String> keywordList = Utility.splitKeyword(keyword).stream()
+                // Guarantee keywords are in lowercase
+                .map(String::toLowerCase)
+                .collect(Collectors.toList());
+
+        List<Pattern> patterns = keywordList.stream()
+                .map(w -> Pattern.compile(Pattern.quote(w), Pattern.CASE_INSENSITIVE))
+                .collect(Collectors.toList());
+
+        IntStream.range(0, sentences.length).forEach(i -> {
+            int[] wordCount = new int[keywordList.size()];
+            List<Matcher> matchers = patterns.stream().map(p -> p.matcher(sentences[i])).collect(Collectors.toList());
+            IntStream.range(0, matchers.size()).forEach(j -> { while (matchers.get(j).find()) { ++wordCount[j]; } });
+            // We prefer the sentence with all key words at least showing 1 time.
+            sentenceCount[i] = Arrays.stream(wordCount).min().orElse(0);
+        });
+
+        return IntStream.range(0, sentenceCount.length)
+                .mapToObj(i -> new AbstractMap.SimpleEntry<>(i, sentenceCount[i]))
+                // Ignore no occurrences
+                .filter(p -> p.getValue() > 0)
+                .sorted((a, b) -> b.getValue() - a.getValue())
+                .limit(5) // 5 sentences
+                .map(p -> sentences[p.getKey()])
+                .map(s -> Searcher.fullTextHighlight(s, keyword, "b"))
+                // Replace all newlines with space
+                .map(s -> s.replaceAll("\\r\\n|\\r|\\n", " "))
+                // Replace multiple spaces into one space
+                .map(s -> s.replaceAll("[ ]+", " "))
+                .collect(Collectors.joining(" ... ", "... ", " ..."));
     }
 
     @Override

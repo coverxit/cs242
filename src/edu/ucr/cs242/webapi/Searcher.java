@@ -1,5 +1,6 @@
 package edu.ucr.cs242.webapi;
 
+import edu.ucr.cs242.Utility;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -41,9 +42,7 @@ public abstract class Searcher {
     }
 
     protected static String fullTextHighlight(String text, String keyword, String htmlTag) {
-        List<String> keywordList = Arrays.stream(keyword.split(" "))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
+        List<String> keywordList = Utility.splitKeyword(keyword).stream()
                 // Guarantee keywords are in lowercase
                 .map(String::toLowerCase)
                 .collect(Collectors.toList());
