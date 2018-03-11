@@ -23,8 +23,12 @@ public class Launcher {
                         "export the data in SQLite into JSON file"));
         subroutines.put("mapreduce",
                 new Subroutine("mapreduce",
-                        "edu.ucr.cs242.mixer.IndexMapReduce",
+                        "edu.ucr.cs242.mixer.mapreduce.IndexMapReduce",
                         "execute the Mixer MapReduce indexer"));
+        subroutines.put("pagerank",
+                new Subroutine("pagerank",
+                        "edu.ucr.cs242.mixer.pagerank.PageRankMapReduce",
+                        "execute the Mixer PageRank MapReduce"));
         subroutines.put("importer",
                 new Subroutine("importer",
                         "edu.ucr.cs242.mixer.importer.NoSQLImporter",

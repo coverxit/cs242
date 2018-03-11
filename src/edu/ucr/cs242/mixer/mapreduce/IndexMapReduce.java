@@ -1,4 +1,4 @@
-package edu.ucr.cs242.mixer;
+package edu.ucr.cs242.mixer.mapreduce;
 
 import edu.ucr.cs242.Utility;
 import org.apache.hadoop.conf.Configuration;
