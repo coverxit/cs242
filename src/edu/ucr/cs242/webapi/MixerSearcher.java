@@ -239,8 +239,10 @@ public class MixerSearcher extends Searcher {
         String rawPageRank = Utility.levelDBGet(levelDB, "__docPR_" + docId);
         if (rawPageRank != null) {
             Double pageRank = Double.parseDouble(rawPageRank);
+            // Normalize PageRank with Max-min normalization
+            Double normalizedPR = normalize(pageRank, 0.0, 1.0, 0.0, 100.0);
             // BM25 * 0.8 + PR * 0.2 is the final score
-            return new AbstractMap.SimpleEntry<>(docId, bm25Score * 0.8 + pageRank * 0.2);
+            return new AbstractMap.SimpleEntry<>(docId, bm25Score * 0.8 + normalizedPR * 0.2);
         }
 
         // Otherwise, just return the 80% BM25 score
@@ -334,7 +336,7 @@ public class MixerSearcher extends Searcher {
                         // Normalization the BM25 score (with Min-max normalization)
                         DoubleSummaryStatistics stat = finalScore.values().stream().collect(Collectors.summarizingDouble(s -> s));
                         for (Integer docId : finalScore.keySet()) {
-                            finalScore.put(docId, normalize(finalScore.get(docId), stat.getMin(), stat.getMax(), 1.0, 100.0));
+                            finalScore.put(docId, normalize(finalScore.get(docId), stat.getMin(), stat.getMax(), 0.0, 100.0));
                         }
                     }
 
