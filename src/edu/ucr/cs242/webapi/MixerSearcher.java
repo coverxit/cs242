@@ -23,6 +23,7 @@ public class MixerSearcher extends Searcher {
     private static final double b = 0.75;
 
     private final DB levelDB;
+    private final boolean withPageRank;
     private final SnowballStemmer stemmer = new englishStemmer();
 
     // Only 3 field, 0 - title, 1 - content, 2 - categories
@@ -31,12 +32,14 @@ public class MixerSearcher extends Searcher {
 
     /**
      * Construct a Lucene searcher with given settings.
-     * @param jdbcUrl The JDBC url to the database.
-     * @param levelDB The LevelDB object.
+     * @param jdbcUrl      The JDBC url to the database.
+     * @param levelDB      The LevelDB object.
+     * @param withPageRank Whether take PageRank into account.
      */
-    public MixerSearcher(String jdbcUrl, DB levelDB) throws SQLException {
+    public MixerSearcher(String jdbcUrl, DB levelDB, boolean withPageRank) throws SQLException {
         super(jdbcUrl);
         this.levelDB = levelDB;
+        this.withPageRank = withPageRank;
 
         numberOfDocs = Double.parseDouble(Utility.levelDBGet(levelDB, "__docCount"));
         for (int i = 0; i < avgDocLength.length; i++) {
@@ -159,6 +162,7 @@ public class MixerSearcher extends Searcher {
         return retMap;
     }
 
+    // <DocId, Score>
     private Map<Integer, Double> calculateFieldScore(int fieldId,
                                                      Map<Integer, Map<String, Double>> termScore,
                                                      Map<String, Map<Integer, MixerInvertedIndex>> invertedIndex,
@@ -173,8 +177,6 @@ public class MixerSearcher extends Searcher {
 
             // All terms occurred in the document?
             if (entry.size() == queryFrequency.size()) {
-                sumScore *= allOccurBoost;
-
                 // Bi-gram for order match
                 int orderMatchCount = 0;
                 for (int i = 0; i < queryTerms.size() - 1; i++) {
@@ -193,9 +195,11 @@ public class MixerSearcher extends Searcher {
                     int docLength = Integer.parseInt(Utility.levelDBGet(levelDB, "__docLength_" + docId + "_" + fieldId));
                     if (docLength == queryTerms.size()) {
                         sumScore *= exactMatchBoost;
+                    } else {
+                        sumScore *= orderMatchBoost;
                     }
-
-                    sumScore *= orderMatchBoost;
+                } else {
+                    sumScore *= allOccurBoost;
                 }
             } else {
                 sumScore *= partialMatchBoost;
@@ -207,6 +211,7 @@ public class MixerSearcher extends Searcher {
         return finalScore;
     }
 
+    // <DocId, Score>
     private Map<Integer, Double> combineFieldScore(Map<Integer, Double> score1, Map<Integer, Double> score2,
                                                    boolean docMustOccurInBoth) {
 
@@ -228,6 +233,22 @@ public class MixerSearcher extends Searcher {
         }
 
         return retMap;
+    }
+
+    private Map.Entry<Integer, Double> combinePageRank(Integer docId, Double bm25Score) {
+        String rawPageRank = Utility.levelDBGet(levelDB, "__docPR_" + docId);
+        if (rawPageRank != null) {
+            Double pageRank = Double.parseDouble(rawPageRank);
+            // BM25 * 0.8 + PR * 0.2 is the final score
+            return new AbstractMap.SimpleEntry<>(docId, bm25Score * 0.8 + pageRank * 0.2);
+        }
+
+        // Otherwise, just return the 80% BM25 score
+        return new AbstractMap.SimpleEntry<>(docId, 0.8 * bm25Score);
+    }
+
+    private Double normalize(Double original, Double min, Double max, Double newMin, Double newMax) {
+        return (original - min) / (max - min) * (newMax - newMin) + newMin;
     }
 
     private static String fragmentHighlight(String text, String keyword) {
@@ -309,7 +330,17 @@ public class MixerSearcher extends Searcher {
                 if (!finalScore.isEmpty()) {
                     hits = finalScore.size();
 
+                    if (withPageRank) {
+                        // Normalization the BM25 score (with Min-max normalization)
+                        DoubleSummaryStatistics stat = finalScore.values().stream().collect(Collectors.summarizingDouble(s -> s));
+                        for (Integer docId : finalScore.keySet()) {
+                            finalScore.put(docId, normalize(finalScore.get(docId), stat.getMin(), stat.getMax(), 1.0, 100.0));
+                        }
+                    }
+
                     Map<String, Double> titleScoreMap = finalScore.entrySet().stream()
+                            // Adding PageRank
+                            .map(entry -> !withPageRank ? entry : combinePageRank(entry.getKey(), entry.getValue()))
                             // Max to min
                             .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
                             // Only top 1000 results

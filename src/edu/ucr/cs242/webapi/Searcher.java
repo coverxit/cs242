@@ -148,7 +148,7 @@ public abstract class Searcher {
                                         .collect(Collectors.toList()))
                 );
                 obj.put("lastModify", p.getLastModify());
-                obj.put("score", String.format("%.4f", p.getScore()));
+                obj.put("score", String.format("%.8f", p.getScore()));
                 array.put(obj);
             });
 

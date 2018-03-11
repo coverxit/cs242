@@ -91,8 +91,8 @@ public class WebAPI {
                     writeFailure(httpExchange, "Parameter `keyword` missing.");
                 } else {
                     String method = urlQuery.get("method").toLowerCase();
-                    if (!method.equals("lucene") && !method.equals("mixer")) {
-                        writeFailure(httpExchange, "Invalid parameter `method`. Available methods are `lucene` and `mixer`.");
+                    if (!method.equals("lucene") && !method.equals("mixer") && !method.equals("mixerpr")) {
+                        writeFailure(httpExchange, "Invalid parameter `method`. Available methods are `lucene`, `mixer` and `mixerpr`.");
                     } else {
                         // Paging
                         int page = 0;
@@ -114,7 +114,7 @@ public class WebAPI {
                                 org.iq80.leveldb.Options dbOptions = new org.iq80.leveldb.Options();
                                 dbOptions.createIfMissing(false);
                                 levelDB = JniDBFactory.factory.open(new File(mixerLevelDBPath.toString()), dbOptions);
-                                searcher = new MixerSearcher(jdbcUrl, levelDB);
+                                searcher = new MixerSearcher(jdbcUrl, levelDB, method.equals("mixerpr"));
                             }
 
                             LocalDateTime start = LocalDateTime.now();
