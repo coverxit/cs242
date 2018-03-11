@@ -1,5 +1,6 @@
 package edu.ucr.cs242.webapi;
 
+import edu.ucr.cs242.Utility;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.index.DirectoryReader;
@@ -35,21 +36,13 @@ public class LuceneSearcher extends Searcher {
     private static BoostQuery buildPhraseQuery(String field, String keyword, int slop, float boost) {
         PhraseQuery.Builder builder = new PhraseQuery.Builder();
         builder.setSlop(slop);
-        // Split terms by space
-        Arrays.stream(keyword.split(" "))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .forEach(s -> builder.add(new Term(field, s)));
+        Utility.split(keyword).forEach(s -> builder.add(new Term(field, s)));
         return new BoostQuery(builder.build(), boost);
     }
 
     private static BoostQuery buildKeywordQuery(String field, String keyword, BooleanClause.Occur occur, float boost) {
         BooleanQuery.Builder builder = new BooleanQuery.Builder();
-        // Split terms by space
-        Arrays.stream(keyword.split(" "))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .forEach(s -> builder.add(new TermQuery(new Term(field, s)), occur));
+        Utility.split(keyword).forEach(s -> builder.add(new TermQuery(new Term(field, s)), occur));
         return new BoostQuery(builder.build(), boost);
     }
 

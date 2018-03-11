@@ -5,8 +5,11 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import edu.ucr.cs242.Utility;
 import org.apache.commons.cli.*;
+import org.fusesource.leveldbjni.JniDBFactory;
+import org.iq80.leveldb.DB;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
@@ -26,6 +29,7 @@ public class WebAPI {
     private final int port;
     private final String jdbcUrl;
     private final Path luceneIndexPath;
+    private final Path mixerLevelDBPath;
     private HttpServer httpServer;
 
     class QueryHandler implements HttpHandler {
@@ -90,24 +94,27 @@ public class WebAPI {
                     if (!method.equals("lucene") && !method.equals("mixer")) {
                         writeFailure(httpExchange, "Invalid parameter `method`. Available methods are `lucene` and `mixer`.");
                     } else {
-                        String keyword = urlQuery.get("keyword");
+                        // Paging
+                        int page = 0;
+                        if (urlQuery.containsKey("page")) {
+                            try {
+                                page = Integer.parseInt(urlQuery.get("page"));
+                            } catch (NumberFormatException e) {
+                                page = 1;
+                            }
+                        }
 
+                        String keyword = urlQuery.get("keyword");
+                        DB levelDB = null;
                         try {
                             Searcher searcher;
                             if (method.equals("lucene")) {
                                 searcher = new LuceneSearcher(jdbcUrl, luceneIndexPath);
                             } else {
-                                searcher = null;
-                            }
-
-                            // Paging
-                            int page = 0;
-                            if (urlQuery.containsKey("page")) {
-                                try {
-                                    page = Integer.parseInt(urlQuery.get("page"));
-                                } catch (NumberFormatException e) {
-                                    page = 1;
-                                }
+                                org.iq80.leveldb.Options dbOptions = new org.iq80.leveldb.Options();
+                                dbOptions.createIfMissing(false);
+                                levelDB = JniDBFactory.factory.open(new File(mixerLevelDBPath.toString()), dbOptions);
+                                searcher = new MixerSearcher(jdbcUrl, levelDB);
                             }
 
                             LocalDateTime start = LocalDateTime.now();
@@ -115,8 +122,14 @@ public class WebAPI {
                             LocalDateTime end = LocalDateTime.now();
 
                             writeSuccess(httpExchange, searchResult.put("elapsedTime", Duration.between(start, end).toMillis()));
-                        } catch (SQLException e) {
-                            System.out.println("WebAPI throws an SQLException: " + e.getMessage());
+                        } catch (Exception e) {
+                            System.out.println("WebAPI throws an Exception.");
+                            e.printStackTrace();
+                        } finally {
+                            // Close LevelDB anyway.
+                            if (levelDB != null) {
+                                levelDB.close();
+                            }
                         }
                     }
                 }
@@ -126,14 +139,16 @@ public class WebAPI {
 
     /**
      * Construct an RESTful API server with given settings.
-     * @param port            The port to listen on.
-     * @param jdbcUrl         The JDBC url to the database.
-     * @param luceneIndexPath The directory to the Lucene index.
+     * @param port             The port to listen on.
+     * @param jdbcUrl          The JDBC url to the database.
+     * @param luceneIndexPath  The directory to the Lucene index.
+     * @param mixerLevelDBPath The path to the Mixer index (LevelDB database).
      */
-    public WebAPI(int port, String jdbcUrl, Path luceneIndexPath) {
+    public WebAPI(int port, String jdbcUrl, Path luceneIndexPath, Path mixerLevelDBPath) {
         this.port = port;
         this.jdbcUrl = jdbcUrl;
         this.luceneIndexPath = luceneIndexPath;
+        this.mixerLevelDBPath = mixerLevelDBPath;
     }
 
     public void start() {
@@ -162,14 +177,14 @@ public class WebAPI {
     }
 
     private static void printUsage() {
-        System.out.println("usage: webapi [options] <jdbc-url> <lucene-index-path>");
+        System.out.println("usage: webapi [options] <jdbc-url> <lucene-index-path> <mixer-leveldb-path>");
         System.out.println("use -h for a list of possible options");
         System.exit(1);
     }
 
     private static void printHelp(Options options) {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp("webapi [options] <jdbc-url> <lucene-index-path>", options);
+        formatter.printHelp("webapi [options] <jdbc-url> <lucene-index-path> <mixer-leveldb-path>", options);
         System.out.println();
     }
 
@@ -205,6 +220,11 @@ public class WebAPI {
                 printUsage();
             }
 
+            if (argList.size() <= 2) {
+                printMessage("Mixer index (LevelDB) path is not specified");
+                printUsage();
+            }
+
             try {
                 int port = Integer.parseInt(cmd.getOptionValue("port", String.valueOf(PORT)));
 
@@ -220,9 +240,25 @@ public class WebAPI {
                         printUsage();
                     }
 
-                    dbConnection.get().close();
-                    new WebAPI(port, jdbcUrl, luceneIndexPath).start();
+                    Path mixerLevelDBPath = Paths.get(argList.get(2));
+                    if (!Files.exists(mixerLevelDBPath) || !Files.isDirectory(mixerLevelDBPath)) {
+                        printMessage("invalid Mixer index (LevelDB) path (not exist or not directory)");
+                        printUsage();
+                    }
 
+                    org.iq80.leveldb.Options dbOptions = new org.iq80.leveldb.Options();
+                    dbOptions.createIfMissing(false);
+
+                    try {
+                        DB levelDB = JniDBFactory.factory.open(new File(mixerLevelDBPath.toString()), dbOptions);
+                        levelDB.close();
+                    } catch (Exception e) {
+                        printMessage("invalid Mixer index (LevelDB) path (not a LevelDB)");
+                        printUsage();
+                    }
+
+                    dbConnection.get().close();
+                    new WebAPI(port, jdbcUrl, luceneIndexPath, mixerLevelDBPath).start();
                 }
             } catch (NumberFormatException e) {
                 printMessage("invalid option(s)");
