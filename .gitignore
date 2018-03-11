@@ -7,6 +7,6 @@ out/
 **/META-INF/*
 /lucene/
 /json-output*/
-hadoop-output*
+hadoop-*output*
 /mixer*/
 mixer.zip
