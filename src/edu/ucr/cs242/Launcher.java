@@ -15,7 +15,7 @@ public class Launcher {
                         "execute the Wikipedia crawler"));
         subroutines.put("indexer",
                 new Subroutine("indexer",
-                        "edu.ucr.cs242.indexing.MapReduce",
+                        "edu.ucr.cs242.indexing.IndexMapReduce",
                         "execute the Lucene indexer"));
         subroutines.put("exporter",
                 new Subroutine("exporter",
@@ -23,7 +23,7 @@ public class Launcher {
                         "export the data in SQLite into JSON file"));
         subroutines.put("mapreduce",
                 new Subroutine("mapreduce",
-                        "edu.ucr.cs242.mixer.MapReduce",
+                        "edu.ucr.cs242.mixer.IndexMapReduce",
                         "execute the Mixer MapReduce indexer"));
         subroutines.put("importer",
                 new Subroutine("importer",
