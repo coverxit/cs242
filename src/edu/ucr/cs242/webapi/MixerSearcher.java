@@ -232,7 +232,7 @@ public class MixerSearcher extends Searcher {
 
     private static String fragmentHighlight(String text, String keyword) {
         String[] sentences = text.split("[,;.\n]");
-        int[] sentenceCount = new int[sentences.length];
+        int[] sentenceScore = new int[sentences.length];
 
         List<String> keywordList = Utility.splitKeyword(keyword).stream()
                 // Guarantee keywords are in lowercase
@@ -240,7 +240,7 @@ public class MixerSearcher extends Searcher {
                 .collect(Collectors.toList());
 
         List<Pattern> patterns = keywordList.stream()
-                .map(w -> Pattern.compile(Pattern.quote(w), Pattern.CASE_INSENSITIVE))
+                .map(w -> Pattern.compile("[ ]+" + w + "[ ]+", Pattern.CASE_INSENSITIVE))
                 .collect(Collectors.toList());
 
         IntStream.range(0, sentences.length).forEach(i -> {
@@ -248,13 +248,12 @@ public class MixerSearcher extends Searcher {
             List<Matcher> matchers = patterns.stream().map(p -> p.matcher(sentences[i])).collect(Collectors.toList());
             IntStream.range(0, matchers.size()).forEach(j -> { while (matchers.get(j).find()) { ++wordCount[j]; } });
             // We prefer the sentence with all key words at least showing 1 time.
-            sentenceCount[i] = Arrays.stream(wordCount).min().orElse(0);
+            sentenceScore[i] = Arrays.stream(wordCount).min().orElse(0) * 20 + Arrays.stream(wordCount).sum();
         });
 
-        return IntStream.range(0, sentenceCount.length)
-                .mapToObj(i -> new AbstractMap.SimpleEntry<>(i, sentenceCount[i]))
+        return IntStream.range(0, sentenceScore.length)
+                .mapToObj(i -> new AbstractMap.SimpleEntry<>(i, sentenceScore[i]))
                 // Ignore no occurrences
-                .filter(p -> p.getValue() > 0)
                 .sorted((a, b) -> b.getValue() - a.getValue())
                 .limit(5) // 5 sentences
                 .map(p -> sentences[p.getKey()])
