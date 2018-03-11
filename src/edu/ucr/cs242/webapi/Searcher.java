@@ -40,7 +40,7 @@ public abstract class Searcher {
                 .collect(Collectors.joining(", ", "(", ")"));
     }
 
-    private static String fullTextHighlight(String text, String keyword, String htmlTag) {
+    protected static String fullTextHighlight(String text, String keyword, String htmlTag) {
         List<String> keywordList = Arrays.stream(keyword.split(" "))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
