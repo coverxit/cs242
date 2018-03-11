@@ -275,15 +275,23 @@ public class MixerSearcher extends Searcher {
                 if (!finalScore.isEmpty()) {
                     hits = finalScore.size();
 
-                    List<String> titles = finalScore.entrySet().stream()
+                    Map<String, Double> titleScoreMap = finalScore.entrySet().stream()
                             // Max to min
                             .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
                             // Only top 1000 results
-                            .limit(1000).map(Map.Entry::getKey)
-                            .map(docId -> Utility.levelDBGet(levelDB, "__docId_" + docId))
-                            .collect(Collectors.toList());
+                            .limit(1000)
+                            // LinkedHashMap keep the insertion order.
+                            .collect(LinkedHashMap::new, // Supplier
+                                    // Accumulator
+                                    (map, item) -> map.put(
+                                            Utility.levelDBGet(levelDB, "__docId_" + item.getKey()),
+                                            item.getValue()
+                                    ),
+                                    // Combiner
+                                    LinkedHashMap::putAll
+                            );
 
-                    pages = fetchRelatedPages(titles, keyword, category, MixerSearcher::fragmentHighlight);
+                    pages = fetchRelatedPages(titleScoreMap, keyword, category, MixerSearcher::fragmentHighlight);
                 }
             }
 

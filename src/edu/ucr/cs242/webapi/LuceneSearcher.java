@@ -13,10 +13,7 @@ import org.apache.lucene.store.FSDirectory;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class LuceneSearcher extends Searcher {
@@ -109,11 +106,19 @@ public class LuceneSearcher extends Searcher {
 
             List<RelatedPage> pages = new ArrayList<>();
             if (hits > 0) {
-                List<String> titles = Arrays.stream(topDocs.scoreDocs).map(sd -> {
-                    try { return searcher.doc(sd.doc); }
+                Map<String, Double> titleScoreMap = Arrays.stream(topDocs.scoreDocs).map(sd -> {
+                    try { return new AbstractMap.SimpleEntry<>(searcher.doc(sd.doc), sd.score); }
                     catch (IOException e) { return null; }
-                }).filter(Objects::nonNull).map(d -> d.get("title")).collect(Collectors.toList());
-                pages = fetchRelatedPages(titles, keyword, category, LuceneSearcher::fragmentHighlight);
+                }).filter(Objects::nonNull).collect(
+                        // Supplier, LinkedHashMap keep the insertion order.
+                        LinkedHashMap::new,
+                        // Accumulator
+                        (map, item) -> map.put(item.getKey().get("title"), Double.valueOf(item.getValue())),
+                        // Combiner
+                        LinkedHashMap::putAll
+                );
+
+                pages = fetchRelatedPages(titleScoreMap, keyword, category, LuceneSearcher::fragmentHighlight);
             }
 
             reader.close();

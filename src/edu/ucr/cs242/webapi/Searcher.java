@@ -59,10 +59,11 @@ public abstract class Searcher {
         return text;
     }
 
-    protected List<RelatedPage> fetchRelatedPages(List<String> titles, String keyword, String category,
+    protected List<RelatedPage> fetchRelatedPages(Map<String, Double> titleScoreMap, String keyword, String category,
                                                   BiFunction<String, String, String> fragmentHighlight) {
         // Keep the scored order from Lucene
         Map<String, RelatedPage> pages = new HashMap<>();
+        List<String> titles = new ArrayList<>(titleScoreMap.keySet());
 
         int fetchCount = 0;
         while (fetchCount < titles.size()) {
@@ -89,7 +90,8 @@ public abstract class Searcher {
                                 content,
                                 categories.stream().map(s -> fullTextHighlight(s, category, "b")).collect(Collectors.toList()),
                                 categories,
-                                lastMod));
+                                lastMod,
+                                titleScoreMap.get(title)));
                         ++localCount;
                     }
                 }
@@ -147,6 +149,7 @@ public abstract class Searcher {
                                         .collect(Collectors.toList()))
                 );
                 obj.put("lastModify", p.getLastModify());
+                obj.put("score", String.format("%.4f", p.getScore()));
                 array.put(obj);
             });
 

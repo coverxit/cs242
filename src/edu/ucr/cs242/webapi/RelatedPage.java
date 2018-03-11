@@ -3,12 +3,13 @@ package edu.ucr.cs242.webapi;
 import java.util.List;
 
 public class RelatedPage {
-    private String title;
-    private String rawTitle;
-    private String snippet;
-    private List<String> categories;
-    private List<String> rawCategories;
-    private String lastModify;
+    private final String title;
+    private final String rawTitle;
+    private final String snippet;
+    private final List<String> categories;
+    private final List<String> rawCategories;
+    private final String lastModify;
+    private final double score;
 
     public String getTitle() {
         return title;
@@ -34,6 +35,8 @@ public class RelatedPage {
         return lastModify;
     }
 
+    public double getScore() { return score; }
+
     /**
      * Represent a related page.
      * @param title         The page title.
@@ -42,14 +45,17 @@ public class RelatedPage {
      * @param categories    The categories the page belongs to.
      * @param rawCategories The raw categories the page belongs to (no b tags include).
      * @param lastModify    The last modification time of the page.
+     * @parma score         The score of the page.
      */
     public RelatedPage(String title, String rawTitle, String snippet,
-                       List<String> categories, List<String> rawCategories, String lastModify) {
+                       List<String> categories, List<String> rawCategories, String lastModify,
+                       double score) {
         this.title = title;
         this.rawTitle = rawTitle;
         this.snippet = snippet;
         this.categories = categories;
         this.rawCategories = rawCategories;
         this.lastModify = lastModify;
+        this.score = score;
     }
 }
