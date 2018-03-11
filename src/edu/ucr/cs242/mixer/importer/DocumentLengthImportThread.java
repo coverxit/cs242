@@ -27,8 +27,8 @@ public class DocumentLengthImportThread extends Thread {
         this.jsonOutputPath = jsonOutputPath;
     }
 
-    private int putLength(int docId, int fieldId, String fieldName, String text) {
-        int length = new StringTokenizer(text).countTokens();
+    private long putLength(int docId, int fieldId, String fieldName, String text) {
+        long length = new StringTokenizer(text).countTokens();
 
         // <docId, length>
         database.put(JniDBFactory.bytes("__docLength_" + docId + "_" + fieldId),
@@ -48,7 +48,7 @@ public class DocumentLengthImportThread extends Thread {
                 new FileReader(Paths.get(jsonOutputPath, "data.json").toString()))) {
 
             // 0 - title, 1 - content, 2 - categories
-            BigInteger[] totalDocLength = { BigInteger.ZERO, BigInteger.ZERO, BigInteger.ZERO };
+            long[] totalDocLength = { 0, 0, 0 };
 
             String dataLine;
             while ((dataLine = dataReader.readLine()) != null) {
@@ -62,9 +62,9 @@ public class DocumentLengthImportThread extends Thread {
                             .map(Objects::toString).map(String::toLowerCase)
                             .collect(Collectors.joining(" "));
 
-                    totalDocLength[0] = totalDocLength[0].add(BigInteger.valueOf(putLength(docId, 0, "title", title)));
-                    totalDocLength[1] = totalDocLength[1].add(BigInteger.valueOf(putLength(docId, 1, "content", content)));
-                    totalDocLength[2] = totalDocLength[2].add(BigInteger.valueOf(putLength(docId, 2, "categories", categories)));
+                    totalDocLength[0] += putLength(docId, 0, "title", title);
+                    totalDocLength[1] += putLength(docId, 1, "content", content);
+                    totalDocLength[2] += putLength(docId, 2, "categories", categories);
 
                     ++indexedCount;
                     if (indexedCount % 1000 == 0) {
@@ -78,10 +78,10 @@ public class DocumentLengthImportThread extends Thread {
             }
 
             for (int i = 0; i < totalDocLength.length; i++) {
-                String averageDocLength = totalDocLength[i].divide(BigInteger.valueOf(indexedCount)).toString();
-                database.put(JniDBFactory.bytes("__avgDocLength_" + i), JniDBFactory.bytes(averageDocLength));
+                double averageDocLength = totalDocLength[i] / (double) indexedCount;
+                database.put(JniDBFactory.bytes("__avgDocLength_" + i), JniDBFactory.bytes(String.valueOf(averageDocLength)));
                 System.out.println("Summary: Average document length for field " + i + " is " + averageDocLength +
-                        " (total: " + totalDocLength[i].toString() + ").");
+                        " (total: " + totalDocLength[i] + ").");
             }
 
             database.put(JniDBFactory.bytes("__docCount"), JniDBFactory.bytes(String.valueOf(indexedCount)));
