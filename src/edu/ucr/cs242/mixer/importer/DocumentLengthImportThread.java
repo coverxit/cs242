@@ -61,6 +61,7 @@ public class DocumentLengthImportThread extends Thread {
 
             String averageDocLength = totalDocLength.divide(BigInteger.valueOf(indexedCount)).toString();
             database.put(JniDBFactory.bytes("__avgDocLength"), JniDBFactory.bytes(averageDocLength));
+            database.put(JniDBFactory.bytes("__docCount"), JniDBFactory.bytes(String.valueOf(indexedCount)));
 
             System.out.format("Summary: DocumentLengthImportThread has imported %d pages. Elapsed time: %s.%n",
                     indexedCount, Utility.elapsedTime(startAt, LocalDateTime.now()));

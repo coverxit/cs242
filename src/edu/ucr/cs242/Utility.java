@@ -1,5 +1,8 @@
 package edu.ucr.cs242;
 
+import org.fusesource.leveldbjni.JniDBFactory;
+import org.iq80.leveldb.DB;
+
 import java.io.BufferedOutputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -120,5 +123,17 @@ public class Utility {
 
     public static boolean isStopWord(String word) {
         return STOP_WORDS.contains(word);
+    }
+
+    public static List<String> split(String keyword) {
+        // Split terms by space
+        return Arrays.stream(keyword.split(" "))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
+    }
+
+    public static String levelDBGet(DB db, String key) {
+        return JniDBFactory.asString(db.get(JniDBFactory.bytes(key)));
     }
 }
