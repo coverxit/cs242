@@ -112,7 +112,7 @@ class IndexReducer extends Reducer<Text, IndexWritable, Text, Text> {
 public class IndexMapReduce {
     public static void main(String[] args) throws Exception {
         if (args.length != 2) {
-            System.out.println("usage: mapreduce <json-data-input-path> <json-index-output-path>");
+            System.out.println("usage: mapreduce <json-data-input-path> <index-output-path>");
         } else {
             Job job = Job.getInstance(new Configuration(), "MapReduceIndexer");
             job.setJarByClass(IndexMapReduce.class);

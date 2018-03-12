@@ -68,8 +68,7 @@ public class DataImportThread extends Thread {
 
         int indexedCount = 0;
 
-        try (BufferedReader dataReader = new BufferedReader(
-                new FileReader(new File(hadoopIndexOutputPath)))) {
+        try (BufferedReader dataReader = new BufferedReader(new FileReader(new File(hadoopIndexOutputPath)))) {
 
             String dataLine;
             while ((dataLine = dataReader.readLine()) != null) {
