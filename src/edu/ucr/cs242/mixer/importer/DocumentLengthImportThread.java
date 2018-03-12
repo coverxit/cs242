@@ -27,7 +27,7 @@ public class DocumentLengthImportThread extends Thread {
         this.jsonOutputPath = jsonOutputPath;
     }
 
-    private long putLength(int docId, int fieldId, String fieldName, String text) {
+    private long putLength(int docId, int fieldId, String text) {
         long length = new StringTokenizer(text).countTokens();
 
         // <docId, length>
@@ -62,9 +62,9 @@ public class DocumentLengthImportThread extends Thread {
                             .map(Objects::toString).map(String::toLowerCase)
                             .collect(Collectors.joining(" "));
 
-                    totalDocLength[0] += putLength(docId, 0, "title", title);
-                    totalDocLength[1] += putLength(docId, 1, "content", content);
-                    totalDocLength[2] += putLength(docId, 2, "categories", categories);
+                    totalDocLength[0] += putLength(docId, 0, title);
+                    totalDocLength[1] += putLength(docId, 1, content);
+                    totalDocLength[2] += putLength(docId, 2, categories);
 
                     ++indexedCount;
                     if (indexedCount % 1000 == 0) {
