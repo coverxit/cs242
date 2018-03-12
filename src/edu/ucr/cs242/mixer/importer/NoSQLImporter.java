@@ -19,17 +19,20 @@ public class NoSQLImporter {
     private final String databasePath;
     private final String jsonOutputPath;
     private final String hadoopIndexOutputPath;
+    private final String hadoopPageRankOutputPath;
 
     /**
      * Construct an NoSQLImporter with given settings.
      * @param databasePath          The path to LevelDB database.
      * @param jsonOutputPath        The folder to the JSON output.
      * @param hadoopIndexOutputPath The file name to the Hadoop's index output.
+     * @param hadoopPageRankOutputPath The file name to the Hadoop's PageRank output.
      */
-    public NoSQLImporter(String databasePath, String jsonOutputPath, String hadoopIndexOutputPath) {
+    public NoSQLImporter(String databasePath, String jsonOutputPath, String hadoopIndexOutputPath, String hadoopPageRankOutputPath) {
         this.databasePath = databasePath;
         this.jsonOutputPath = jsonOutputPath;
         this.hadoopIndexOutputPath = hadoopIndexOutputPath;
+        this.hadoopPageRankOutputPath = hadoopPageRankOutputPath;
     }
 
     public void start() throws IOException {
@@ -46,9 +49,13 @@ public class NoSQLImporter {
             DocumentLengthImportThread lengthThread = new DocumentLengthImportThread(db, jsonOutputPath);
             lengthThread.start();
 
+            PageRankImportThread pageRankThread = new PageRankImportThread(db, hadoopPageRankOutputPath);
+            pageRankThread.start();
+
             Utility.waitThread(indexThread);
             Utility.waitThread(dataThread);
             Utility.waitThread(lengthThread);
+            Utility.waitThread(pageRankThread);
         }
     }
 
@@ -57,14 +64,14 @@ public class NoSQLImporter {
     }
 
     private static void printUsage() {
-        System.out.println("usage: importer [options] <leveldb-path> <exporter-json-output-path> <hadoop-index-output-path>");
+        System.out.println("usage: importer [options] <leveldb-path> <exporter-json-output-path> <hadoop-index-output-path> <hadoop-pagerank-output-path>");
         System.out.println("use -h for a list of possible options");
         System.exit(1);
     }
 
     private static void printHelp(org.apache.commons.cli.Options options) {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp("importer [options] <leveldb-path> <exporter-json-output-path> <hadoop-index-output-path>", options);
+        formatter.printHelp("importer [options] <leveldb-path> <exporter-json-output-path> <hadoop-index-output-path> <hadoop-pagerank-output-path>", options);
         System.out.println();
     }
 
@@ -103,6 +110,11 @@ public class NoSQLImporter {
                 printUsage();
             }
 
+            if (argList.size() <= 3) {
+                printMessage("Hadoop's PageRank output path is not specified");
+                printUsage();
+            }
+
             String logOutput = cmd.getOptionValue("log-output");
             if (!Utility.openOutputLog(logOutput)) {
                 printMessage("invalid log file path");
@@ -127,7 +139,14 @@ public class NoSQLImporter {
                 printUsage();
             }
 
-            new NoSQLImporter(databasePath.toString(), jsonOutputPath.toString(), hadoopIndexOutputPath.toString()).start();
+            Path hadoopPageRankOutputPath = Paths.get(argList.get(3));
+            if (!Files.exists(hadoopPageRankOutputPath) || Files.isDirectory(hadoopPageRankOutputPath)) {
+                printMessage("invalid Hadoop's PageRank output path (not exist or is directory)");
+                printUsage();
+            }
+
+            new NoSQLImporter(databasePath.toString(), jsonOutputPath.toString(),
+                    hadoopIndexOutputPath.toString(), hadoopPageRankOutputPath.toString()).start();
         } catch (ParseException e) {
             // Lower the first letter, which as default is an upper letter.
             printMessage(e.getMessage().substring(0, 1).toLowerCase() + e.getMessage().substring(1));
