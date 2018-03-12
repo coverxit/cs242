@@ -29,6 +29,7 @@ public class MixerSearcher extends Searcher {
     // Only 3 field, 0 - title, 1 - content, 2 - categories
     private final double[] avgDocLength = new double[3];
     private final double numberOfDocs;
+    private final double maxPageRank;
 
     /**
      * Construct a Lucene searcher with given settings.
@@ -42,6 +43,7 @@ public class MixerSearcher extends Searcher {
         this.withPageRank = withPageRank;
 
         numberOfDocs = Double.parseDouble(Utility.levelDBGet(levelDB, "__docCount"));
+        maxPageRank = Double.parseDouble(Utility.levelDBGet(levelDB, "__docMaxPR"));
         for (int i = 0; i < avgDocLength.length; i++) {
             avgDocLength[i] = Double.parseDouble(Utility.levelDBGet(levelDB, "__avgDocLength_" + i));
         }
@@ -237,16 +239,17 @@ public class MixerSearcher extends Searcher {
 
     private Map.Entry<Integer, Double> combinePageRank(Integer docId, Double bm25Score) {
         String rawPageRank = Utility.levelDBGet(levelDB, "__docPR_" + docId);
+        Double pageRank = 1.0 / numberOfDocs; // The initial PageRank
+
+        // Does this page has a PageRank value?
         if (rawPageRank != null) {
-            Double pageRank = Double.parseDouble(rawPageRank);
-            // Normalize PageRank with Max-min normalization
-            Double normalizedPR = normalize(pageRank, 0.0, 1.0, 0.0, 100.0);
-            // BM25 * 0.8 + PR * 0.2 is the final score
-            return new AbstractMap.SimpleEntry<>(docId, bm25Score * 0.8 + normalizedPR * 0.2);
+            pageRank = Double.parseDouble(rawPageRank);
         }
 
-        // Otherwise, just return the 80% BM25 score
-        return new AbstractMap.SimpleEntry<>(docId, 0.8 * bm25Score);
+        // Normalize PageRank with Max-min normalization
+        Double normalizedPR = normalize(pageRank, 0.0, maxPageRank, 0.0, 1000.0);
+        // BM25 * 0.8 + PR * 0.2 is the final score
+        return new AbstractMap.SimpleEntry<>(docId, bm25Score * 0.9 + normalizedPR * 0.1);
     }
 
     private Double normalize(Double original, Double min, Double max, Double newMin, Double newMax) {
