@@ -237,19 +237,24 @@ public class MixerSearcher extends Searcher {
         return retMap;
     }
 
-    private Map.Entry<Integer, Double> combinePageRank(Integer docId, Double bm25Score) {
-        String rawPageRank = Utility.levelDBGet(levelDB, "__docPR_" + docId);
-        Double pageRank = 1.0 / numberOfDocs; // The initial PageRank
+    private Map.Entry<Integer, MixerScore> combinePageRank(Integer docId, Double bm25Score) {
+        if (!withPageRank) {
+            return new AbstractMap.SimpleEntry<>(docId, new MixerScore(bm25Score, bm25Score, -1));
+        } else {
+            String rawPageRank = Utility.levelDBGet(levelDB, "__docPR_" + docId);
+            Double pageRank = 1.0 / numberOfDocs; // The initial PageRank
 
-        // Does this page has a PageRank value?
-        if (rawPageRank != null) {
-            pageRank = Double.parseDouble(rawPageRank);
+            // Does this page has a PageRank value?
+            if (rawPageRank != null) {
+                pageRank = Double.parseDouble(rawPageRank);
+            }
+
+            // Normalize PageRank with Max-min normalization
+            Double normalizedPR = normalize(pageRank, 0.0, maxPageRank, 0.0, 1000.0);
+            // BM25 * 0.8 + PR * 0.2 is the final score
+            return new AbstractMap.SimpleEntry<>(docId,
+                    new MixerScore(bm25Score * 0.9 + normalizedPR * 0.1, bm25Score, normalizedPR));
         }
-
-        // Normalize PageRank with Max-min normalization
-        Double normalizedPR = normalize(pageRank, 0.0, maxPageRank, 0.0, 1000.0);
-        // BM25 * 0.8 + PR * 0.2 is the final score
-        return new AbstractMap.SimpleEntry<>(docId, bm25Score * 0.9 + normalizedPR * 0.1);
     }
 
     private Double normalize(Double original, Double min, Double max, Double newMin, Double newMax) {
@@ -343,11 +348,11 @@ public class MixerSearcher extends Searcher {
                         }
                     }
 
-                    Map<String, Double> titleScoreMap = finalScore.entrySet().stream()
+                    Map<String, String> titleScoreMap = finalScore.entrySet().stream()
                             // Adding PageRank
-                            .map(entry -> !withPageRank ? entry : combinePageRank(entry.getKey(), entry.getValue()))
+                            .map(entry -> combinePageRank(entry.getKey(), entry.getValue()))
                             // Max to min
-                            .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
+                            .sorted((a, b) -> Double.compare(b.getValue().getTotalScore(), a.getValue().getTotalScore()))
                             // Only top 1000 results
                             .limit(1000)
                             // LinkedHashMap keep the insertion order.
@@ -355,7 +360,7 @@ public class MixerSearcher extends Searcher {
                                     // Accumulator
                                     (map, item) -> map.put(
                                             Utility.levelDBGet(levelDB, "__docId_" + item.getKey()),
-                                            item.getValue()
+                                            item.getValue().toString()
                                     ),
                                     // Combiner
                                     LinkedHashMap::putAll

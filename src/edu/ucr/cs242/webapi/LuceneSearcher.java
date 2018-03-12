@@ -108,14 +108,14 @@ public class LuceneSearcher extends Searcher {
 
             List<RelatedPage> pages = new ArrayList<>();
             if (hits > 0) {
-                Map<String, Double> titleScoreMap = Arrays.stream(topDocs.scoreDocs).map(sd -> {
+                Map<String, String> titleScoreMap = Arrays.stream(topDocs.scoreDocs).map(sd -> {
                     try { return new AbstractMap.SimpleEntry<>(searcher.doc(sd.doc), sd.score); }
                     catch (IOException e) { return null; }
                 }).filter(Objects::nonNull).collect(
                         // Supplier, LinkedHashMap keep the insertion order.
                         LinkedHashMap::new,
                         // Accumulator
-                        (map, item) -> map.put(item.getKey().get("title"), Double.valueOf(item.getValue())),
+                        (map, item) -> map.put(item.getKey().get("title"), String.valueOf(item.getValue())),
                         // Combiner
                         LinkedHashMap::putAll
                 );

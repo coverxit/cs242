@@ -58,7 +58,7 @@ public abstract class Searcher {
         return text;
     }
 
-    protected List<RelatedPage> fetchRelatedPages(Map<String, Double> titleScoreMap, String keyword, String category,
+    protected List<RelatedPage> fetchRelatedPages(Map<String, String> titleScoreMap, String keyword, String category,
                                                   BiFunction<String, String, String> fragmentHighlight) {
         // Keep the scored order from Lucene
         Map<String, RelatedPage> pages = new HashMap<>();
@@ -148,7 +148,7 @@ public abstract class Searcher {
                                         .collect(Collectors.toList()))
                 );
                 obj.put("lastModify", p.getLastModify());
-                obj.put("score", String.format("%.8f", p.getScore()));
+                obj.put("score", p.getScore());
                 array.put(obj);
             });
 
