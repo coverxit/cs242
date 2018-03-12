@@ -257,7 +257,10 @@ public class MixerSearcher extends Searcher {
         }
     }
 
-    private Double normalize(Double original, Double min, Double max, Double newMin, Double newMax) {
+    private double normalize(double original, double min, double max, double newMin, double newMax) {
+        if (min == max)
+            return newMax;
+
         return (original - min) / (max - min) * (newMax - newMin) + newMin;
     }
 
