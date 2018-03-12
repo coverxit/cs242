@@ -10,3 +10,4 @@ out/
 hadoop-*output*
 /mixer*/
 mixer.zip
+pagerank-*output*
