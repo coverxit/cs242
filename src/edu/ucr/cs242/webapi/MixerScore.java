@@ -28,7 +28,7 @@ public class MixerScore {
         if (pageRank < 0) {
             return String.format("%.8f", totalScore);
         } else {
-            return String.format("%.8f (Normalized BM25: %.8f, Normalized PageRank: %.8f)", totalScore, bm25Score, pageRank);
+            return String.format("%.8f (Normalized BM25 + Proximity: %.8f, Normalized PageRank: %.8f)", totalScore, bm25Score, pageRank);
         }
     }
 }
