@@ -1,2 +1,2 @@
 #!/bin/bash
-java -jar bin/cs242.jar mapreduce $@
+hadoop jar bin/cs242.jar mapreduce $@
